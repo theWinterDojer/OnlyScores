@@ -136,16 +136,16 @@ Client:
 5) Performance and QA pass.
 
 ## Tasks (v0 execution)
-- [ ] Create `src/` layout with `components`, `providers`, `types` folders.
-- [ ] Move `GameStatus`, `Game`, `ScoreCard` types into `src/types/score.ts`.
-- [ ] Add `src/types/provider.ts` for provider contracts and response shapes.
-- [ ] Extract `StatusPill` into `src/components/StatusPill.tsx`.
-- [ ] Extract `GameRow` into `src/components/GameRow.tsx`.
-- [ ] Extract `ScoreCardView` into `src/components/ScoreCardView.tsx`.
-- [ ] Extract app header into `src/components/AppHeader.tsx`.
-- [ ] Wire `App.tsx` to use new components and type imports.
-- [ ] Create `Provider` interface in `src/providers/Provider.ts`.
-- [ ] Add `MockProvider` with existing mock data in `src/providers/MockProvider.ts`.
+- [x] Create `src/` layout with `components`, `providers`, `types` folders.
+- [x] Move `GameStatus`, `Game`, `ScoreCard` types into `src/types/score.ts`.
+- [x] Add `src/types/provider.ts` for provider contracts and response shapes.
+- [x] Extract `StatusPill` into `src/components/StatusPill.tsx`.
+- [x] Extract `GameRow` into `src/components/GameRow.tsx`.
+- [x] Extract `ScoreCardView` into `src/components/ScoreCardView.tsx`.
+- [x] Extract app header into `src/components/AppHeader.tsx`.
+- [x] Wire `App.tsx` to use new components and type imports.
+- [x] Create `Provider` interface in `src/providers/Provider.ts`.
+- [x] Add `MockProvider` with existing mock data in `src/providers/MockProvider.ts`.
 - [ ] Replace inline mock data in `App.tsx` with `MockProvider` fetch call.
 - [ ] Add simple provider registry in `src/providers/index.ts`.
 - [ ] Add `AsyncStorage` cache helper in `src/providers/cache.ts`.

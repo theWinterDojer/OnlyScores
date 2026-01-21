@@ -1,0 +1,17 @@
+project:
+  name: onlyscores
+  language: TypeScript
+  framework: React
+  description: ""
+commands:
+  test: ""
+  lint: ""
+  build: ""
+rules:
+  - After completing a PRD checklist task, immediately update prd.md by changing
+    that task from - [ ] to - [x]. Include that prd.md change in the same commit
+    as the code changes. Do not check tasks you did not complete.
+  - Only mark a task complete if the related files/changes are present in git
+    diff and committed. If unable to commit changes, do not check off the task.
+boundaries:
+  never_touch: []

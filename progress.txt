@@ -1,1 +1,3 @@
-Log decisions, links, and what changed per task.
+2026-01-21
+- Scaffolded Expo blank TypeScript app in repo root.
+- Updated docs to reflect Expo stack.

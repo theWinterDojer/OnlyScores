@@ -1,3 +1,5 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
 # OS
 .DS_Store
 Thumbs.db
@@ -15,13 +17,23 @@ lerna-debug.log*
 # Env
 .env
 .env.*
+.env*.local
 
-# Node/TypeScript
+# Dependencies
 node_modules/
 dist/
 coverage/
 .nyc_output/
 *.tsbuildinfo
+
+# Expo
+.expo/
+.expo-shared/
+web-build/
+expo-env.d.ts
+
+# Metro
+.metro-health-check*
 
 # Android/Gradle/IntelliJ
 *.iml
@@ -52,8 +64,20 @@ ios/build/
 *.xccheckout
 *.xcscmblueprint
 
+# Native signing
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
 # Cursor
 .cursor/
 .cursor
 *.cursor
 *.cursorworkspace
+
+# Generated native folders
+/ios
+/android

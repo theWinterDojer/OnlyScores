@@ -8,7 +8,7 @@ product promise.
 
 - Product Agent: owns scope, MVP boundaries, and success criteria.
 - UX Agent: enforces a scores-first experience, large type, and minimal taps.
-- Android Agent: implements the Kotlin/Compose client and local caching.
+- Mobile Agent: implements the Expo/React Native client and local caching.
 - Backend Agent: owns provider integration, polling, and notifications.
 - Data Agent: normalizes provider data into the internal game model.
 - QA Agent: validates offline behavior, refresh timing, and notification rules.

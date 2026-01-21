@@ -44,9 +44,11 @@ noise. Most sports apps prioritize content and engagement over speed.
 - No betting or odds.
 - No advanced stats.
 
-## Platforms
+## Platforms and Stack
+- Expo (React Native) app with TypeScript.
 - Android first.
 - iOS later with feature parity.
+- Push notifications via Expo Push (FCM/APNs).
 
 ## Key User Flows
 - Onboarding: choose leagues and teams, proceed to home.
@@ -73,6 +75,7 @@ noise. Most sports apps prioritize content and engagement over speed.
 - Trigger notifications for start, score change, and final.
 - Provide read-optimized endpoints for mobile clients.
 - Cache provider responses to reduce rate limits.
+- Store Expo push tokens for device subscriptions.
 
 ## API Contracts (v0)
 - GET /v1/leagues
@@ -89,6 +92,7 @@ Backend:
 - game (id, leagueId, providerGameId, startTime, status,
   homeTeamId, awayTeamId, homeScore, awayScore, lastUpdate)
 - notification_event (id, gameId, type, payload, createdAt)
+- device (id, expoPushToken, selectionPreferences, updatedAt)
 
 Client:
 - selection (league/team, order)
@@ -99,7 +103,7 @@ Client:
 ## Notifications
 - Per-card toggles for game start, score change, and final.
 - Backend computes events by comparing latest and previous game state.
-- FCM push with minimal payload (game id, teams, score, status).
+- Expo push notifications with minimal payload (game id, teams, score, status).
 
 ## Performance and Offline
 - Render from cache immediately, refresh in background.
@@ -126,6 +130,6 @@ Client:
 ## Milestones
 1) Provider adapter + normalization.
 2) Backend polling + notifications.
-3) Android MVP with cache and home cards.
+3) Expo MVP with cache and home cards.
 4) Settings + reorder + collapse.
 5) Performance and QA pass.

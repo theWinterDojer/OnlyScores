@@ -135,7 +135,7 @@ Client:
 4) Settings + reorder + collapse.
 5) Performance and QA pass.
 
-## Tasks (v0 execution)
+## Tasks
 - [x] Create `src/` layout with `components`, `providers`, `types` folders.
 - [x] Move `GameStatus`, `Game`, `ScoreCard` types into `src/types/score.ts`.
 - [x] Add `src/types/provider.ts` for provider contracts and response shapes.

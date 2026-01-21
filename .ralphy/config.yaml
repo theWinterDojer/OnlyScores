@@ -1,17 +1,20 @@
 project:
   name: onlyscores
   language: TypeScript
-  framework: React
-  description: ""
+  framework: Expo (React Native)
+  description: "Scores-first sports app"
 commands:
   test: ""
   lint: ""
   build: ""
 rules:
-  - After completing a PRD checklist task, immediately update prd.md by changing
-    that task from - [ ] to - [x]. Include that prd.md change in the same commit
+  - After completing a PRD checklist task, immediately update PRD.md by changing
+    that task from - [ ] to - [x]. Include that PRD.md change in the same commit
     as the code changes. Do not check tasks you did not complete.
   - Only mark a task complete if the related files/changes are present in git
     diff and committed. If unable to commit changes, do not check off the task.
+  - Do one PRD checklist task at a time and keep diffs small.
+  - Build the provider interface first; do not hardcode provider APIs in UI.
+  - After each task, run the app and commit the changes.
 boundaries:
   never_touch: []

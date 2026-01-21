@@ -134,3 +134,36 @@ Client:
 3) Expo MVP with cache and home cards.
 4) Settings + reorder + collapse.
 5) Performance and QA pass.
+
+## Tasks (v0 execution)
+- [ ] Create `src/` layout with `components`, `providers`, `types` folders.
+- [ ] Move `GameStatus`, `Game`, `ScoreCard` types into `src/types/score.ts`.
+- [ ] Add `src/types/provider.ts` for provider contracts and response shapes.
+- [ ] Extract `StatusPill` into `src/components/StatusPill.tsx`.
+- [ ] Extract `GameRow` into `src/components/GameRow.tsx`.
+- [ ] Extract `ScoreCardView` into `src/components/ScoreCardView.tsx`.
+- [ ] Extract app header into `src/components/AppHeader.tsx`.
+- [ ] Wire `App.tsx` to use new components and type imports.
+- [ ] Create `Provider` interface in `src/providers/Provider.ts`.
+- [ ] Add `MockProvider` with existing mock data in `src/providers/MockProvider.ts`.
+- [ ] Replace inline mock data in `App.tsx` with `MockProvider` fetch call.
+- [ ] Add simple provider registry in `src/providers/index.ts`.
+- [ ] Add `AsyncStorage` cache helper in `src/providers/cache.ts`.
+- [ ] Cache latest scores snapshot after provider fetch.
+- [ ] Hydrate cached scores on app start before network fetch.
+- [ ] Track and display last updated time on each card.
+- [ ] Add loading state UI for initial fetch.
+- [ ] Add empty state UI when no games exist.
+- [ ] Add error state UI with retry action.
+- [ ] Add pull-to-refresh on score list.
+- [ ] Add auto-refresh interval while app is active.
+- [ ] Pause auto-refresh when app goes background/inactive.
+- [ ] Add up/down buttons to reorder cards in list.
+- [ ] Persist card order to `AsyncStorage`.
+- [ ] Restore card order from cache on launch.
+- [ ] Disable reorder buttons at top/bottom edges.
+- [ ] Add lightweight test data for reorder logic in mock.
+- [ ] Create `TheSportsDBProvider` implementing the provider interface.
+- [ ] Map TheSportsDB responses to internal game model.
+- [ ] Switch provider registry to use TheSportsDB (behind interface).
+- [ ] Audit UI to confirm no backend, accounts, or router usage.

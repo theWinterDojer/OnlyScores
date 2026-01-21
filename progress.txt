@@ -1,0 +1,1 @@
+Log decisions, links, and what changed per task.

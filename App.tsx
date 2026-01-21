@@ -7,6 +7,7 @@ import {
   FlatList,
   Pressable,
 } from "react-native";
+import AppHeader from "./src/components/AppHeader";
 
 type GameStatus = "scheduled" | "live" | "final";
 
@@ -125,10 +126,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.appTitle}>Only Scores</Text>
-        <Text style={styles.subtitle}>Just scores. Fast.</Text>
-      </View>
+      <AppHeader />
 
       <FlatList
         data={cards}
@@ -142,9 +140,6 @@ export default function App() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#0B0F14" },
-  header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
-  appTitle: { color: "white", fontSize: 28, fontWeight: "800" },
-  subtitle: { color: "rgba(255,255,255,0.7)", marginTop: 4 },
 
   listContent: { padding: 16, paddingTop: 8, gap: 12 },
 

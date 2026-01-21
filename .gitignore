@@ -1,0 +1,59 @@
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Env
+.env
+.env.*
+
+# Node/TypeScript
+node_modules/
+dist/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Android/Gradle/IntelliJ
+*.iml
+.idea/
+.gradle/
+local.properties
+**/build/
+captures/
+externalNativeBuild/
+cxx/
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+lint-results*.html
+lint-results*.xml
+lint.xml
+out/
+
+# iOS/Xcode
+DerivedData/
+ios/Pods/
+ios/build/
+*.xcworkspace
+*.xcuserdata
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+
+# Cursor
+.cursor/
+.cursor
+*.cursor
+*.cursorworkspace

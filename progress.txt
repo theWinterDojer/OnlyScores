@@ -1,3 +1,0 @@
-2026-01-21
-- Scaffolded Expo blank TypeScript app in repo root.
-- Updated docs to reflect Expo stack.

@@ -17,6 +17,7 @@ noise. Most sports apps prioritize content and engagement over speed.
 - Scores visible immediately on launch.
 - Consistent, fast refresh while the app is open.
 - Readable scores with minimal taps.
+- Use clean team logos and branding.
 - Reliable notifications for game events.
 - Offline-friendly with last successful scores cached.
 

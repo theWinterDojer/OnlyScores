@@ -5,6 +5,7 @@ import {
   Text,
   View,
   FlatList,
+  ScrollView,
   Pressable,
   ActivityIndicator,
   AppState,
@@ -15,6 +16,7 @@ import { getProvider } from "./src/providers";
 import { readCache, writeCache } from "./src/providers/cache";
 import type {
   ProviderGame,
+  ProviderLeague,
   ProviderScoreCard,
   ProviderTeam,
 } from "./src/types/provider";
@@ -22,7 +24,13 @@ import type { ScoreCard } from "./src/types/score";
 
 const SCORE_CACHE_KEY = "scores:latest:ui";
 const CARD_ORDER_CACHE_KEY = "cards:order";
+const SELECTION_CACHE_KEY = "selection:preferences";
 const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
+
+type SelectionPreferences = {
+  leagueIds: string[];
+  teamIds: string[];
+};
 
 const formatScheduledTime = (startTime: string) => {
   const date = new Date(startTime);
@@ -88,11 +96,28 @@ const applyCardOrder = (cards: ScoreCard[], order?: string[] | null) => {
   return [...ordered, ...remaining];
 };
 
+const toggleId = (current: string[], id: string) =>
+  current.includes(id) ? current.filter((value) => value !== id) : [...current, id];
+
 export default function App() {
   const [cards, setCards] = useState<ScoreCard[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectionHydrated, setSelectionHydrated] = useState(false);
+  const [isOnboarding, setIsOnboarding] = useState(true);
+  const [onboardingStep, setOnboardingStep] = useState<"leagues" | "teams">(
+    "leagues"
+  );
+  const [selectedLeagueIds, setSelectedLeagueIds] = useState<string[]>([]);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+  const [leagues, setLeagues] = useState<ProviderLeague[]>([]);
+  const [teamsByLeagueId, setTeamsByLeagueId] = useState<
+    Record<string, ProviderTeam[]>
+  >({});
+  const [isLoadingLeagues, setIsLoadingLeagues] = useState(false);
+  const [isLoadingTeams, setIsLoadingTeams] = useState(false);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const cardOrderRef = useRef<string[] | null>(null);
@@ -105,6 +130,71 @@ export default function App() {
     ],
     [cards.length]
   );
+  const leagueNameById = useMemo(
+    () =>
+      leagues.reduce<Record<string, string>>((acc, league) => {
+        acc[league.id] = league.name;
+        return acc;
+      }, {}),
+    [leagues]
+  );
+  const teamLeagueLookup = useMemo(() => {
+    const lookup: Record<string, string> = {};
+    Object.entries(teamsByLeagueId).forEach(([leagueId, teams]) => {
+      teams.forEach((team) => {
+        lookup[team.id] = leagueId;
+      });
+    });
+    return lookup;
+  }, [teamsByLeagueId]);
+  const selectedLeagueSet = useMemo(
+    () => new Set(selectedLeagueIds),
+    [selectedLeagueIds]
+  );
+
+  const handleToggleLeague = useCallback(
+    (leagueId: string) => {
+      setSelectedLeagueIds((prev) => {
+        const next = toggleId(prev, leagueId);
+        if (prev.includes(leagueId)) {
+          setSelectedTeamIds((currentTeams) =>
+            currentTeams.filter(
+              (teamId) => teamLeagueLookup[teamId] !== leagueId
+            )
+          );
+        }
+        return next;
+      });
+    },
+    [teamLeagueLookup]
+  );
+
+  const handleToggleTeam = useCallback((teamId: string) => {
+    setSelectedTeamIds((prev) => toggleId(prev, teamId));
+  }, []);
+
+  useEffect(() => {
+    const hydrateSelection = async () => {
+      try {
+        const cached = await readCache<SelectionPreferences>(
+          SELECTION_CACHE_KEY
+        );
+        if (cached && cached.leagueIds.length > 0) {
+          setIsOnboarding(false);
+        }
+      } catch {
+        // Ignore selection hydration failures.
+      } finally {
+        setSelectionHydrated(true);
+      }
+    };
+
+    hydrateSelection();
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const persistCardOrder = useCallback(async (nextCards: ScoreCard[]) => {
     const order = nextCards.map((card) => card.id);
@@ -135,7 +225,62 @@ export default function App() {
     });
   }, [persistCardOrder]);
 
+  const loadLeagues = useCallback(async () => {
+    setIsLoadingLeagues(true);
+    setOnboardingError(null);
+    try {
+      const provider = getProvider();
+      const fetched = await provider.getLeagues();
+      if (isMountedRef.current) {
+        setLeagues(fetched);
+      }
+    } catch {
+      if (isMountedRef.current) {
+        setOnboardingError("Unable to load leagues right now.");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoadingLeagues(false);
+      }
+    }
+  }, []);
+
+  const loadTeamsForLeagues = useCallback(
+    async (leagueIds: string[]) => {
+      if (leagueIds.length === 0) {
+        setTeamsByLeagueId({});
+        setSelectedTeamIds([]);
+        return;
+      }
+      setIsLoadingTeams(true);
+      setOnboardingError(null);
+      try {
+        const provider = getProvider();
+        const results = await Promise.all(
+          leagueIds.map((leagueId) => provider.getTeams(leagueId))
+        );
+        const nextTeams: Record<string, ProviderTeam[]> = {};
+        leagueIds.forEach((leagueId, index) => {
+          nextTeams[leagueId] = results[index] ?? [];
+        });
+        if (isMountedRef.current) {
+          setTeamsByLeagueId(nextTeams);
+        }
+      } catch {
+        if (isMountedRef.current) {
+          setOnboardingError("Unable to load teams right now.");
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setIsLoadingTeams(false);
+        }
+      }
+    },
+    []
+  );
+
   const fetchScores = useCallback(async () => {
+    if (isOnboarding) return;
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
     setIsFetching(true);
@@ -173,9 +318,37 @@ export default function App() {
       }
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [isOnboarding]);
 
   useEffect(() => {
+    if (!selectionHydrated || !isOnboarding || onboardingStep !== "leagues") {
+      return;
+    }
+    if (leagues.length > 0) return;
+    void loadLeagues();
+  }, [
+    selectionHydrated,
+    isOnboarding,
+    onboardingStep,
+    leagues.length,
+    loadLeagues,
+  ]);
+
+  useEffect(() => {
+    if (!selectionHydrated || !isOnboarding || onboardingStep !== "teams") {
+      return;
+    }
+    void loadTeamsForLeagues(selectedLeagueIds);
+  }, [
+    selectionHydrated,
+    isOnboarding,
+    onboardingStep,
+    selectedLeagueIds,
+    loadTeamsForLeagues,
+  ]);
+
+  useEffect(() => {
+    if (!selectionHydrated || isOnboarding) return;
     const hydrateAndFetch = async () => {
       try {
         const cachedOrder = await readCache<string[]>(CARD_ORDER_CACHE_KEY);
@@ -194,11 +367,7 @@ export default function App() {
     };
 
     hydrateAndFetch();
-
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [fetchScores]);
+  }, [fetchScores, selectionHydrated, isOnboarding]);
 
   const startAutoRefresh = useCallback(() => {
     if (autoRefreshRef.current) return;
@@ -213,7 +382,39 @@ export default function App() {
     autoRefreshRef.current = null;
   }, []);
 
+  const handleStartTeams = () => {
+    setOnboardingStep("teams");
+  };
+
+  const handleBackToLeagues = () => {
+    setOnboardingStep("leagues");
+  };
+
+  const handleFinishOnboarding = useCallback(async () => {
+    if (selectedLeagueIds.length === 0) return;
+    const leagueSet = new Set(selectedLeagueIds);
+    const filteredTeamIds = selectedTeamIds.filter((teamId) => {
+      const leagueId = teamLeagueLookup[teamId];
+      return leagueId ? leagueSet.has(leagueId) : false;
+    });
+    const nextSelection: SelectionPreferences = {
+      leagueIds: [...selectedLeagueIds],
+      teamIds: filteredTeamIds,
+    };
+    try {
+      await writeCache(SELECTION_CACHE_KEY, nextSelection);
+    } catch {
+      // Preference persistence should not block onboarding completion.
+    }
+    if (isMountedRef.current) {
+      setIsOnboarding(false);
+      setOnboardingStep("leagues");
+      setIsInitialLoading(true);
+    }
+  }, [selectedLeagueIds, selectedTeamIds, teamLeagueLookup]);
+
   useEffect(() => {
+    if (isOnboarding) return;
     if (appStateRef.current === "active") {
       startAutoRefresh();
     }
@@ -237,16 +438,188 @@ export default function App() {
       stopAutoRefresh();
       subscription.remove();
     };
-  }, [fetchScores, startAutoRefresh, stopAutoRefresh]);
+  }, [fetchScores, startAutoRefresh, stopAutoRefresh, isOnboarding]);
 
   const handleRetry = () => {
     if (isFetching) return;
     fetchScores();
   };
 
+  const showSelectionLoading = !selectionHydrated;
+  const showOnboarding = selectionHydrated && isOnboarding;
   const showLoadingState = cards.length === 0 && (isInitialLoading || isFetching);
   const showFullScreenError = cards.length === 0 && !!errorMessage && !isFetching;
   const showInlineError = cards.length > 0 && !!errorMessage;
+
+  if (showSelectionLoading) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color="white" />
+          <Text style={styles.loadingText}>Loading preferences...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (showOnboarding) {
+    const isLeagueStep = onboardingStep === "leagues";
+    const canContinue = selectedLeagueIds.length > 0;
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.onboardingContainer}>
+          <Text style={styles.onboardingTitle}>
+            {isLeagueStep ? "Pick your leagues" : "Choose teams"}
+          </Text>
+          <Text style={styles.onboardingSubtitle}>
+            {isLeagueStep
+              ? "Select one or more leagues to build your home screen."
+              : "Optional: pick teams to keep scores even tighter."}
+          </Text>
+          {onboardingError ? (
+            <View style={styles.onboardingError}>
+              <Text style={styles.onboardingErrorText}>{onboardingError}</Text>
+            </View>
+          ) : null}
+          {isLeagueStep ? (
+            isLoadingLeagues ? (
+              <View style={styles.onboardingLoading}>
+                <ActivityIndicator size="large" color="white" />
+                <Text style={styles.loadingText}>Loading leagues...</Text>
+              </View>
+            ) : leagues.length > 0 ? (
+              <ScrollView contentContainerStyle={styles.onboardingList}>
+                {leagues.map((league) => {
+                  const selected = selectedLeagueSet.has(league.id);
+                  return (
+                    <Pressable
+                      key={league.id}
+                      onPress={() => handleToggleLeague(league.id)}
+                    >
+                      <View
+                        style={[
+                          styles.choiceRow,
+                          selected ? styles.choiceRowSelected : null,
+                        ]}
+                      >
+                        <Text style={styles.choiceText}>{league.name}</Text>
+                        <Text
+                          style={[
+                            styles.choiceTag,
+                            selected ? styles.choiceTagActive : null,
+                          ]}
+                        >
+                          {selected ? "Selected" : "Tap to add"}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>No leagues available</Text>
+                <Text style={styles.emptyBody}>
+                  Try again once leagues load from the provider.
+                </Text>
+              </View>
+            )
+          ) : isLoadingTeams ? (
+            <View style={styles.onboardingLoading}>
+              <ActivityIndicator size="large" color="white" />
+              <Text style={styles.loadingText}>Loading teams...</Text>
+            </View>
+          ) : selectedLeagueIds.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>Pick a league first</Text>
+              <Text style={styles.emptyBody}>
+                Choose at least one league before selecting teams.
+              </Text>
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={styles.onboardingList}>
+              {selectedLeagueIds.map((leagueId) => {
+                const teams = teamsByLeagueId[leagueId] ?? [];
+                return (
+                  <View key={leagueId} style={styles.teamGroup}>
+                    <Text style={styles.teamGroupTitle}>
+                      {leagueNameById[leagueId] ?? leagueId}
+                    </Text>
+                    {teams.length === 0 ? (
+                      <Text style={styles.teamGroupEmpty}>No teams yet.</Text>
+                    ) : (
+                      teams.map((team) => {
+                        const selected = selectedTeamIds.includes(team.id);
+                        return (
+                          <Pressable
+                            key={team.id}
+                            onPress={() => handleToggleTeam(team.id)}
+                          >
+                            <View
+                              style={[
+                                styles.choiceRow,
+                                selected ? styles.choiceRowSelected : null,
+                              ]}
+                            >
+                              <Text style={styles.choiceText}>{team.name}</Text>
+                              <Text
+                                style={[
+                                  styles.choiceTag,
+                                  selected ? styles.choiceTagActive : null,
+                                ]}
+                              >
+                                {selected ? "Selected" : "Tap to add"}
+                              </Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+          <View style={styles.onboardingFooter}>
+            {isLeagueStep ? (
+              <Pressable
+                onPress={handleStartTeams}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  !canContinue ? styles.primaryButtonDisabled : null,
+                  pressed && canContinue ? styles.primaryButtonPressed : null,
+                ]}
+                disabled={!canContinue}
+              >
+                <Text style={styles.primaryButtonText}>Continue</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.onboardingFooterRow}>
+                <Pressable
+                  onPress={handleBackToLeagues}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    pressed ? styles.secondaryButtonPressed : null,
+                  ]}
+                >
+                  <Text style={styles.secondaryButtonText}>Back</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleFinishOnboarding}
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    pressed ? styles.primaryButtonPressed : null,
+                  ]}
+                >
+                  <Text style={styles.primaryButtonText}>Finish</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -381,4 +754,81 @@ const styles = StyleSheet.create({
   },
   retryButtonPressed: { opacity: 0.8 },
   retryButtonText: { color: "#0B0F14", fontWeight: "800" },
+
+  onboardingContainer: { flex: 1, padding: 20, gap: 16 },
+  onboardingTitle: { color: "white", fontSize: 24, fontWeight: "800" },
+  onboardingSubtitle: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  onboardingError: {
+    backgroundColor: "rgba(255,80,80,0.12)",
+    borderRadius: 12,
+    padding: 12,
+  },
+  onboardingErrorText: { color: "#FFB3B3", fontWeight: "600" },
+  onboardingLoading: { alignItems: "center", gap: 12, paddingVertical: 24 },
+  onboardingList: { gap: 12, paddingBottom: 24 },
+  choiceRow: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  choiceRowSelected: {
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  choiceText: { color: "white", fontSize: 16, fontWeight: "700" },
+  choiceTag: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  choiceTagActive: { color: "white" },
+  teamGroup: { gap: 8 },
+  teamGroupTitle: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 13,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginTop: 6,
+  },
+  teamGroupEmpty: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  onboardingFooter: { marginTop: "auto", paddingTop: 8 },
+  onboardingFooterRow: {
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+  },
+  primaryButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: "white",
+    alignItems: "center",
+  },
+  primaryButtonDisabled: { backgroundColor: "rgba(255,255,255,0.4)" },
+  primaryButtonPressed: { opacity: 0.85 },
+  primaryButtonText: { color: "#0B0F14", fontWeight: "800" },
+  secondaryButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+  },
+  secondaryButtonPressed: { opacity: 0.8 },
+  secondaryButtonText: { color: "white", fontWeight: "800" },
 });

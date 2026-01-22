@@ -167,3 +167,10 @@ Client:
 - [x] Map TheSportsDB responses to internal game model.
 - [x] Switch provider registry to use TheSportsDB (behind interface).
 - [x] Audit UI to confirm no backend, accounts, or router usage.
+- [ ] Wire `App.tsx` to consume `src/components` and `src/types/score.ts` (remove inline duplicates).
+- [ ] Implement onboarding for league/team selection and persist selections.
+- [ ] Use selected league/team ids when calling `getScores`.
+- [ ] Implement TheSportsDB `getLeagues` and `getTeams` with team logos.
+- [ ] Add settings UI with per-card notification toggles.
+- [ ] Implement notification subscription and event delivery flow.
+- [ ] Add explicit offline indicator with last updated timestamp context.

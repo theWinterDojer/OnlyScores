@@ -160,7 +160,7 @@ Client:
 - [x] Pause auto-refresh when app goes background/inactive.
 - [x] Add up/down buttons to reorder cards in list.
 - [x] Persist card order to `AsyncStorage`.
-- [ ] Restore card order from cache on launch.
+- [x] Restore card order from cache on launch.
 - [ ] Disable reorder buttons at top/bottom edges.
 - [ ] Add lightweight test data for reorder logic in mock.
 - [ ] Create `TheSportsDBProvider` implementing the provider interface.

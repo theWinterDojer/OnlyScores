@@ -104,6 +104,18 @@ const normalizeCards = (
     lastUpdated: getCardLastUpdated(card.games),
   }));
 
+
+const applyCardOrder = (cards: ScoreCard[], order?: string[] | null) => {
+  if (!order || order.length === 0) return cards;
+  const byId = new Map(cards.map((card) => [card.id, card]));
+  const orderSet = new Set(order);
+  const ordered = order
+    .map((id) => byId.get(id))
+    .filter((card): card is ScoreCard => Boolean(card));
+  const remaining = cards.filter((card) => !orderSet.has(card.id));
+  return [...ordered, ...remaining];
+};
+
 function StatusPill({ status }: { status: GameStatus }) {
   const label = status === "scheduled" ? "UPCOMING" : status.toUpperCase();
   return (
@@ -217,6 +229,7 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
+  const cardOrderRef = useRef<string[] | null>(null);
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const listContentStyle = useMemo(
@@ -228,11 +241,10 @@ export default function App() {
   );
 
   const persistCardOrder = useCallback(async (nextCards: ScoreCard[]) => {
+    const order = nextCards.map((card) => card.id);
+    cardOrderRef.current = order;
     try {
-      await writeCache(
-        CARD_ORDER_CACHE_KEY,
-        nextCards.map((card) => card.id)
-      );
+      await writeCache(CARD_ORDER_CACHE_KEY, order);
     } catch {
       // Card order persistence should not block UI updates.
     }
@@ -275,11 +287,12 @@ export default function App() {
         )
       ).flat();
       const normalized = normalizeCards(providerCards, buildTeamLookup(teams));
+      const ordered = applyCardOrder(normalized, cardOrderRef.current);
       if (isMountedRef.current) {
-        setCards(normalized);
+        setCards(ordered);
       }
       try {
-        await writeCache(SCORE_CACHE_KEY, normalized);
+        await writeCache(SCORE_CACHE_KEY, ordered);
       } catch {
         // Cache failures should not block score updates.
       }
@@ -299,9 +312,13 @@ export default function App() {
   useEffect(() => {
     const hydrateAndFetch = async () => {
       try {
+        const cachedOrder = await readCache<string[]>(CARD_ORDER_CACHE_KEY);
+        if (cachedOrder && cachedOrder.length > 0) {
+          cardOrderRef.current = cachedOrder;
+        }
         const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
         if (cached && isMountedRef.current) {
-          setCards(cached);
+          setCards(applyCardOrder(cached, cardOrderRef.current));
         }
       } catch {
         // Ignore cache hydration failures.

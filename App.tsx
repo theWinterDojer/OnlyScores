@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -176,6 +176,9 @@ function ScoreCardView({ card }: { card: ScoreCard }) {
 export default function App() {
   const [cards, setCards] = useState<ScoreCard[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
   const listContentStyle = useMemo(
     () => [
       styles.listContent,
@@ -185,64 +188,96 @@ export default function App() {
   );
 
   useEffect(() => {
-    let isMounted = true;
-
     const hydrateAndFetch = async () => {
       try {
         const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
-        if (cached && isMounted) {
+        if (cached && isMountedRef.current) {
           setCards(cached);
         }
       } catch {
         // Ignore cache hydration failures.
       }
 
-      try {
-        const provider = getProvider();
-        const providerCards = await provider.getScores({});
-        const leagueIds = Array.from(
-          new Set(providerCards.map((card) => card.leagueId))
-        );
-        const teams = (
-          await Promise.all(
-            leagueIds.map((leagueId) => provider.getTeams(leagueId))
-          )
-        ).flat();
-        const normalized = normalizeCards(
-          providerCards,
-          buildTeamLookup(teams)
-        );
-        if (isMounted) {
-          setCards(normalized);
-        }
-        try {
-          await writeCache(SCORE_CACHE_KEY, normalized);
-        } catch {
-          // Cache failures should not block score updates.
-        }
-      } catch {
-        // Ignore fetch failures for now.
-      } finally {
-        if (isMounted) {
-          setIsInitialLoading(false);
-        }
-      }
+      await fetchScores();
     };
 
     hydrateAndFetch();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
   }, []);
+
+  const fetchScores = async () => {
+    if (isFetching) return;
+    setIsFetching(true);
+    setErrorMessage(null);
+
+    try {
+      const provider = getProvider();
+      const providerCards = await provider.getScores({});
+      const leagueIds = Array.from(
+        new Set(providerCards.map((card) => card.leagueId))
+      );
+      const teams = (
+        await Promise.all(
+          leagueIds.map((leagueId) => provider.getTeams(leagueId))
+        )
+      ).flat();
+      const normalized = normalizeCards(providerCards, buildTeamLookup(teams));
+      if (isMountedRef.current) {
+        setCards(normalized);
+      }
+      try {
+        await writeCache(SCORE_CACHE_KEY, normalized);
+      } catch {
+        // Cache failures should not block score updates.
+      }
+    } catch {
+      if (isMountedRef.current) {
+        setErrorMessage("Unable to load scores. Check your connection.");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsInitialLoading(false);
+        setIsFetching(false);
+      }
+    }
+  };
+
+  const handleRetry = () => {
+    if (isFetching) return;
+    fetchScores();
+  };
+
+  const showLoadingState = cards.length === 0 && (isInitialLoading || isFetching);
+  const showFullScreenError = cards.length === 0 && !!errorMessage && !isFetching;
+  const showInlineError = cards.length > 0 && !!errorMessage;
 
   return (
     <SafeAreaView style={styles.screen}>
       <AppHeader />
-      {isInitialLoading && cards.length === 0 ? (
+      {showLoadingState ? (
         <View style={styles.loadingState}>
           <ActivityIndicator size="large" color="white" />
           <Text style={styles.loadingText}>Loading scores...</Text>
+        </View>
+      ) : showFullScreenError ? (
+        <View style={styles.errorState}>
+          <Text style={styles.errorTitle}>Scores unavailable</Text>
+          <Text style={styles.errorBody}>
+            We couldn't refresh scores right now.
+          </Text>
+          <Pressable
+            onPress={handleRetry}
+            style={({ pressed }) => [
+              styles.retryButton,
+              pressed ? styles.retryButtonPressed : null,
+            ]}
+            disabled={isFetching}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
@@ -250,6 +285,25 @@ export default function App() {
           keyExtractor={(c) => c.id}
           contentContainerStyle={listContentStyle}
           renderItem={({ item }) => <ScoreCardView card={item} />}
+          ListHeaderComponent={
+            showInlineError ? (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorBannerText}>
+                  Couldn't refresh scores.
+                </Text>
+                <Pressable
+                  onPress={handleRetry}
+                  style={({ pressed }) => [
+                    styles.retryButtonSmall,
+                    pressed ? styles.retryButtonPressed : null,
+                  ]}
+                  disabled={isFetching}
+                >
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </Pressable>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No games yet</Text>
@@ -285,6 +339,44 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
+  errorState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 32,
+  },
+  errorTitle: { color: "white", fontSize: 18, fontWeight: "800" },
+  errorBody: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  errorBanner: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  errorBannerText: { color: "rgba(255,255,255,0.8)", fontWeight: "600" },
+  retryButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "white",
+  },
+  retryButtonSmall: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "white",
+  },
+  retryButtonPressed: { opacity: 0.8 },
+  retryButtonText: { color: "#0B0F14", fontWeight: "800" },
 
   card: {
     backgroundColor: "#111827",

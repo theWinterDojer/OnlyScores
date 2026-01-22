@@ -149,7 +149,7 @@ Client:
 - [x] Replace inline mock data in `App.tsx` with `MockProvider` fetch call.
 - [x] Add simple provider registry in `src/providers/index.ts`.
 - [x] Add `AsyncStorage` cache helper in `src/providers/cache.ts`.
-- [ ] Cache latest scores snapshot after provider fetch.
+- [x] Cache latest scores snapshot after provider fetch.
 - [ ] Hydrate cached scores on app start before network fetch.
 - [ ] Track and display last updated time on each card.
 - [ ] Add loading state UI for initial fetch.

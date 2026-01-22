@@ -4,7 +4,9 @@ import {
   ProviderTeam,
   ProviderScoreCard,
   ProviderGame,
+  ProviderScoresResponse,
 } from "../types/provider";
+import { writeCache } from "./cache";
 
 const leagues: ProviderLeague[] = [
   { id: "nba", name: "NBA", sport: "basketball" },
@@ -152,6 +154,15 @@ const mockProvider: Provider<
           ),
         }))
         .filter((card) => card.games.length > 0);
+    }
+    const snapshot: ProviderScoresResponse = {
+      cards,
+      fetchedAt: new Date().toISOString(),
+    };
+    try {
+      await writeCache("scores:latest", snapshot);
+    } catch {
+      // Cache failures should not block score fetches.
     }
     return cards;
   },

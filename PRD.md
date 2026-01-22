@@ -190,5 +190,5 @@ Client:
 - [x] Support NFL week-based scoring windows instead of day-only filtering.
 - [x] Confirm backend endpoints match PRD contract, including `window=week`.
 - [x] Set and document `EXPO_PUBLIC_ONLYSCORES_API_BASE_URL` for runtime.
-- [ ] Run end-to-end Expo push notification test with backend events.
+- [x] Run end-to-end Expo push notification test with backend events.
 - [x] Add a clear startup warning when API base URL is missing.

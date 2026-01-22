@@ -164,6 +164,6 @@ Client:
 - [x] Disable reorder buttons at top/bottom edges.
 - [x] Add lightweight test data for reorder logic in mock.
 - [x] Create `TheSportsDBProvider` implementing the provider interface.
-- [ ] Map TheSportsDB responses to internal game model.
+- [x] Map TheSportsDB responses to internal game model.
 - [ ] Switch provider registry to use TheSportsDB (behind interface).
 - [ ] Audit UI to confirm no backend, accounts, or router usage.

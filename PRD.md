@@ -161,7 +161,7 @@ Client:
 - [x] Add up/down buttons to reorder cards in list.
 - [x] Persist card order to `AsyncStorage`.
 - [x] Restore card order from cache on launch.
-- [ ] Disable reorder buttons at top/bottom edges.
+- [x] Disable reorder buttons at top/bottom edges.
 - [ ] Add lightweight test data for reorder logic in mock.
 - [ ] Create `TheSportsDBProvider` implementing the provider interface.
 - [ ] Map TheSportsDB responses to internal game model.

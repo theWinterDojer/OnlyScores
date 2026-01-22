@@ -156,10 +156,14 @@ function ScoreCardView({
   card,
   onMoveUp,
   onMoveDown,
+  canMoveUp,
+  canMoveDown,
 }: {
   card: ScoreCard;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -194,9 +198,11 @@ function ScoreCardView({
             <Pressable
               onPress={onMoveUp}
               hitSlop={10}
+              disabled={!canMoveUp}
               style={({ pressed }) => [
                 styles.reorderButton,
-                pressed ? styles.reorderButtonPressed : null,
+                !canMoveUp ? styles.reorderButtonDisabled : null,
+                pressed && canMoveUp ? styles.reorderButtonPressed : null,
               ]}
             >
               <Text style={styles.reorderButtonText}>Up</Text>
@@ -204,9 +210,11 @@ function ScoreCardView({
             <Pressable
               onPress={onMoveDown}
               hitSlop={10}
+              disabled={!canMoveDown}
               style={({ pressed }) => [
                 styles.reorderButton,
-                pressed ? styles.reorderButtonPressed : null,
+                !canMoveDown ? styles.reorderButtonDisabled : null,
+                pressed && canMoveDown ? styles.reorderButtonPressed : null,
               ]}
             >
               <Text style={styles.reorderButtonText}>Down</Text>
@@ -417,6 +425,8 @@ export default function App() {
               card={item}
               onMoveUp={() => moveCard(index, -1)}
               onMoveDown={() => moveCard(index, 1)}
+              canMoveUp={index > 0}
+              canMoveDown={index < cards.length - 1}
             />
           )}
           refreshing={isFetching}
@@ -543,6 +553,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.12)",
   },
+  reorderButtonDisabled: { opacity: 0.4 },
   reorderButtonPressed: { opacity: 0.8 },
   reorderButtonText: {
     color: "rgba(255,255,255,0.85)",

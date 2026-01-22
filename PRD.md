@@ -151,9 +151,9 @@ Client:
 - [x] Add `AsyncStorage` cache helper in `src/providers/cache.ts`.
 - [x] Cache latest scores snapshot after provider fetch.
 - [x] Hydrate cached scores on app start before network fetch.
-- [ ] Track and display last updated time on each card.
-- [ ] Add loading state UI for initial fetch.
-- [ ] Add empty state UI when no games exist.
+- [x] Track and display last updated time on each card.
+- [x] Add loading state UI for initial fetch.
+- [x] Add empty state UI when no games exist.
 - [ ] Add error state UI with retry action.
 - [ ] Add pull-to-refresh on score list.
 - [ ] Add auto-refresh interval while app is active.

@@ -6,6 +6,7 @@ import {
   View,
   FlatList,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import AppHeader from "./src/components/AppHeader";
 import { getProvider } from "./src/providers";
@@ -32,6 +33,7 @@ type ScoreCard = {
   id: string;
   title: string; // e.g., "NBA"
   games: Game[];
+  lastUpdated?: string;
 };
 
 const SCORE_CACHE_KEY = "scores:latest:ui";
@@ -50,6 +52,28 @@ const formatGameTime = (game: ProviderGame) => {
   if (game.status === "live") return "LIVE";
   if (game.status === "final") return "FINAL";
   return formatScheduledTime(game.startTime);
+};
+
+const formatUpdatedLabel = (timestamp?: string) => {
+  if (!timestamp) return "Updated --";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "Updated --";
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const period = hours >= 12 ? "PM" : "AM";
+  const normalizedHours = hours % 12 === 0 ? 12 : hours % 12;
+  return `Updated ${normalizedHours}:${minutes} ${period}`;
+};
+
+const getCardLastUpdated = (games: ProviderGame[]) => {
+  const latest = games.reduce<number | null>((current, game) => {
+    const time = new Date(game.lastUpdated).getTime();
+    if (Number.isNaN(time)) return current;
+    if (current === null) return time;
+    return Math.max(current, time);
+  }, null);
+  if (latest === null) return undefined;
+  return new Date(latest).toISOString();
 };
 
 const buildTeamLookup = (teams: ProviderTeam[]) =>
@@ -74,6 +98,7 @@ const normalizeCards = (
       homeScore: game.homeScore,
       status: game.status,
     })),
+    lastUpdated: getCardLastUpdated(card.games),
   }));
 
 function StatusPill({ status }: { status: GameStatus }) {
@@ -125,7 +150,12 @@ function ScoreCardView({ card }: { card: ScoreCard }) {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{card.title}</Text>
+        <View style={styles.cardTitleStack}>
+          <Text style={styles.cardTitle}>{card.title}</Text>
+          <Text style={styles.updatedText}>
+            {formatUpdatedLabel(card.lastUpdated)}
+          </Text>
+        </View>
 
         {overflow ? (
           <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={10}>
@@ -145,6 +175,14 @@ function ScoreCardView({ card }: { card: ScoreCard }) {
 
 export default function App() {
   const [cards, setCards] = useState<ScoreCard[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const listContentStyle = useMemo(
+    () => [
+      styles.listContent,
+      cards.length === 0 ? styles.listContentEmpty : null,
+    ],
+    [cards.length]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -184,6 +222,10 @@ export default function App() {
         }
       } catch {
         // Ignore fetch failures for now.
+      } finally {
+        if (isMounted) {
+          setIsInitialLoading(false);
+        }
       }
     };
 
@@ -197,13 +239,27 @@ export default function App() {
   return (
     <SafeAreaView style={styles.screen}>
       <AppHeader />
-
-      <FlatList
-        data={cards}
-        keyExtractor={(c) => c.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => <ScoreCardView card={item} />}
-      />
+      {isInitialLoading && cards.length === 0 ? (
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color="white" />
+          <Text style={styles.loadingText}>Loading scores...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={cards}
+          keyExtractor={(c) => c.id}
+          contentContainerStyle={listContentStyle}
+          renderItem={({ item }) => <ScoreCardView card={item} />}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No games yet</Text>
+              <Text style={styles.emptyBody}>
+                Scores will appear here when games are scheduled.
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -212,6 +268,23 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#0B0F14" },
 
   listContent: { padding: 16, paddingTop: 8, gap: 12 },
+  listContentEmpty: { flexGrow: 1, justifyContent: "center" },
+
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  loadingText: { color: "rgba(255,255,255,0.8)", fontWeight: "600" },
+  emptyState: { alignItems: "center", gap: 8, paddingHorizontal: 32 },
+  emptyTitle: { color: "white", fontSize: 18, fontWeight: "800" },
+  emptyBody: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
 
   card: {
     backgroundColor: "#111827",
@@ -222,11 +295,17 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     marginBottom: 10,
   },
   cardTitle: { color: "white", fontSize: 18, fontWeight: "800" },
+  cardTitleStack: { gap: 2 },
+  updatedText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    fontWeight: "600",
+  },
   linkText: { color: "rgba(255,255,255,0.75)", fontWeight: "600" },
 
   gameRow: {

@@ -181,8 +181,8 @@ Client:
 - [x] Add explicit offline indicator with last updated timestamp context.
 - [ ] Route mobile data access through backend API endpoints and keep provider adapters server-side.
 - [ ] Filter score cards by selected team ids when provided.
-- [ ] Replace reorder buttons with drag-and-drop list and persist order.
 - [ ] Wire real Expo push permissions/token + backend event delivery; remove local alert fallback.
+- [ ] Replace reorder buttons with drag-and-drop list and persist order.
 - [ ] Render team logos in score rows with fallback when missing.
 - [ ] Add refresh interval setting (60-120 seconds) and persist user choice.
 - [ ] Support NFL week-based scoring windows instead of day-only filtering.

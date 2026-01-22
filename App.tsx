@@ -179,6 +179,10 @@ export default function App() {
         const cached = await readCache<SelectionPreferences>(
           SELECTION_CACHE_KEY
         );
+        if (cached) {
+          setSelectedLeagueIds(cached.leagueIds);
+          setSelectedTeamIds(cached.teamIds);
+        }
         if (cached && cached.leagueIds.length > 0) {
           setIsOnboarding(false);
         }
@@ -288,7 +292,11 @@ export default function App() {
 
     try {
       const provider = getProvider();
-      const providerCards = await provider.getScores({});
+      const request = {
+        leagueIds: selectedLeagueIds,
+        teamIds: selectedTeamIds,
+      };
+      const providerCards = await provider.getScores(request);
       const leagueIds = Array.from(
         new Set(providerCards.map((card) => card.leagueId))
       );
@@ -318,7 +326,7 @@ export default function App() {
       }
       isFetchingRef.current = false;
     }
-  }, [isOnboarding]);
+  }, [isOnboarding, selectedLeagueIds, selectedTeamIds]);
 
   useEffect(() => {
     if (!selectionHydrated || !isOnboarding || onboardingStep !== "leagues") {

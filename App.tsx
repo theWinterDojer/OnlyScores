@@ -285,6 +285,8 @@ export default function App() {
           keyExtractor={(c) => c.id}
           contentContainerStyle={listContentStyle}
           renderItem={({ item }) => <ScoreCardView card={item} />}
+          refreshing={isFetching}
+          onRefresh={fetchScores}
           ListHeaderComponent={
             showInlineError ? (
               <View style={styles.errorBanner}>

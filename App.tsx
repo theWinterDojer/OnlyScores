@@ -122,6 +122,22 @@ const normalizeCards = (
     lastUpdated: getCardLastUpdated(card.games),
   }));
 
+const filterCardsByTeamIds = (
+  cards: ProviderScoreCard[],
+  teamIds: string[]
+): ProviderScoreCard[] => {
+  if (teamIds.length === 0) return cards;
+  const teamSet = new Set(teamIds);
+  return cards
+    .map((card) => ({
+      ...card,
+      games: card.games.filter(
+        (game) => teamSet.has(game.homeTeamId) || teamSet.has(game.awayTeamId)
+      ),
+    }))
+    .filter((card) => card.games.length > 0);
+};
+
 const applyCardOrder = (cards: ScoreCard[], order?: string[] | null) => {
   if (!order || order.length === 0) return cards;
   const byId = new Map(cards.map((card) => [card.id, card]));
@@ -477,15 +493,19 @@ export default function App() {
         teamIds: selectedTeamIds,
       };
       const providerCards = await provider.getScores(request);
+      const filteredCards = filterCardsByTeamIds(
+        providerCards,
+        selectedTeamIds
+      );
       const leagueIds = Array.from(
-        new Set(providerCards.map((card) => card.leagueId))
+        new Set(filteredCards.map((card) => card.leagueId))
       );
       const teams = (
         await Promise.all(
           leagueIds.map((leagueId) => provider.getTeams(leagueId))
         )
       ).flat();
-      const normalized = normalizeCards(providerCards, buildTeamLookup(teams));
+      const normalized = normalizeCards(filteredCards, buildTeamLookup(teams));
       const ordered = applyCardOrder(normalized, cardOrderRef.current);
       if (isMountedRef.current) {
         setCards(ordered);

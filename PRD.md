@@ -163,7 +163,7 @@ Client:
 - [x] Restore card order from cache on launch.
 - [x] Disable reorder buttons at top/bottom edges.
 - [x] Add lightweight test data for reorder logic in mock.
-- [ ] Create `TheSportsDBProvider` implementing the provider interface.
+- [x] Create `TheSportsDBProvider` implementing the provider interface.
 - [ ] Map TheSportsDB responses to internal game model.
 - [ ] Switch provider registry to use TheSportsDB (behind interface).
 - [ ] Audit UI to confirm no backend, accounts, or router usage.

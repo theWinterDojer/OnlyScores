@@ -162,7 +162,7 @@ Client:
 - [x] Persist card order to `AsyncStorage`.
 - [x] Restore card order from cache on launch.
 - [x] Disable reorder buttons at top/bottom edges.
-- [ ] Add lightweight test data for reorder logic in mock.
+- [x] Add lightweight test data for reorder logic in mock.
 - [ ] Create `TheSportsDBProvider` implementing the provider interface.
 - [ ] Map TheSportsDB responses to internal game model.
 - [ ] Switch provider registry to use TheSportsDB (behind interface).

@@ -11,6 +11,8 @@ import { writeCache } from "./cache";
 const leagues: ProviderLeague[] = [
   { id: "nba", name: "NBA", sport: "basketball" },
   { id: "nfl", name: "NFL", sport: "football" },
+  { id: "nhl", name: "NHL", sport: "hockey" },
+  { id: "mlb", name: "MLB", sport: "baseball" },
 ];
 
 const nbaTeamNames = [
@@ -24,6 +26,8 @@ const nbaTeamNames = [
   "Nuggets",
 ];
 const nflTeamNames = ["Bucs", "Bills", "Eagles", "Saints", "Jets", "Cowboys"];
+const nhlTeamNames = ["Bruins", "Rangers", "Oilers", "Canucks"];
+const mlbTeamNames = ["Yankees", "Dodgers", "Cubs", "Astros"];
 
 const toTeamId = (leagueId: string, name: string) =>
   `${leagueId}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
@@ -38,6 +42,18 @@ const teams: ProviderTeam[] = [
   ...nflTeamNames.map((name) => ({
     id: toTeamId("nfl", name),
     leagueId: "nfl",
+    name,
+    shortName: name,
+  })),
+  ...nhlTeamNames.map((name) => ({
+    id: toTeamId("nhl", name),
+    leagueId: "nhl",
+    name,
+    shortName: name,
+  })),
+  ...mlbTeamNames.map((name) => ({
+    id: toTeamId("mlb", name),
+    leagueId: "mlb",
     name,
     shortName: name,
   })),
@@ -108,6 +124,40 @@ const makeNflGames = (baseDate: Date): ProviderGame[] =>
     };
   });
 
+const makeNhlGames = (baseDate: Date): ProviderGame[] =>
+  Array.from({ length: 3 }).map((_, i) => {
+    const status = i % 2 === 0 ? "live" : "scheduled";
+    const time = i % 2 === 0 ? "LIVE" : "8:00 PM";
+    return {
+      id: `nhl-${i}`,
+      leagueId: "nhl",
+      startTime: makeStartTime(status, time, baseDate),
+      status,
+      awayTeamId: toTeamId("nhl", nhlTeamNames[i % 2]),
+      homeTeamId: toTeamId("nhl", nhlTeamNames[2 + (i % 2)]),
+      awayScore: i % 2 === 0 ? 2 + i : undefined,
+      homeScore: i % 2 === 0 ? 1 + i : undefined,
+      lastUpdated: new Date().toISOString(),
+    };
+  });
+
+const makeMlbGames = (baseDate: Date): ProviderGame[] =>
+  Array.from({ length: 2 }).map((_, i) => {
+    const status = i % 2 === 0 ? "scheduled" : "final";
+    const time = i % 2 === 0 ? "6:35 PM" : "FINAL";
+    return {
+      id: `mlb-${i}`,
+      leagueId: "mlb",
+      startTime: makeStartTime(status, time, baseDate),
+      status,
+      awayTeamId: toTeamId("mlb", mlbTeamNames[i % 2]),
+      homeTeamId: toTeamId("mlb", mlbTeamNames[2 + (i % 2)]),
+      awayScore: i % 2 === 0 ? undefined : 3 + i,
+      homeScore: i % 2 === 0 ? undefined : 4 + i,
+      lastUpdated: new Date().toISOString(),
+    };
+  });
+
 const buildCards = (baseDate: Date): ProviderScoreCard[] => [
   {
     id: "card-nba",
@@ -120,6 +170,18 @@ const buildCards = (baseDate: Date): ProviderScoreCard[] => [
     leagueId: "nfl",
     title: "NFL",
     games: makeNflGames(baseDate),
+  },
+  {
+    id: "card-nhl",
+    leagueId: "nhl",
+    title: "NHL",
+    games: makeNhlGames(baseDate),
+  },
+  {
+    id: "card-mlb",
+    leagueId: "mlb",
+    title: "MLB",
+    games: makeMlbGames(baseDate),
   },
 ];
 

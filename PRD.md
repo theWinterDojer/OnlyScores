@@ -173,4 +173,4 @@ Client:
 - [x] Implement TheSportsDB `getLeagues` and `getTeams` with team logos.
 - [x] Add settings UI with per-card notification toggles.
 - [x] Implement notification subscription and event delivery flow.
-- [ ] Add explicit offline indicator with last updated timestamp context.
+- [x] Add explicit offline indicator with last updated timestamp context.

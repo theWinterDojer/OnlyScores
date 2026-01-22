@@ -63,10 +63,32 @@ const formatGameTime = (game: ProviderGame) => {
   return formatScheduledTime(game.startTime);
 };
 
+const formatUpdatedLabel = (timestamp?: string) => {
+  if (!timestamp) return "Updated --";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "Updated --";
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const period = hours >= 12 ? "PM" : "AM";
+  const normalizedHours = hours % 12 === 0 ? 12 : hours % 12;
+  return `Updated ${normalizedHours}:${minutes} ${period}`;
+};
 
 const getCardLastUpdated = (games: ProviderGame[]) => {
   const latest = games.reduce<number | null>((current, game) => {
     const time = new Date(game.lastUpdated).getTime();
+    if (Number.isNaN(time)) return current;
+    if (current === null) return time;
+    return Math.max(current, time);
+  }, null);
+  if (latest === null) return undefined;
+  return new Date(latest).toISOString();
+};
+
+const getLatestCardUpdated = (cards: ScoreCard[]) => {
+  const latest = cards.reduce<number | null>((current, card) => {
+    if (!card.lastUpdated) return current;
+    const time = new Date(card.lastUpdated).getTime();
     if (Number.isNaN(time)) return current;
     if (current === null) return time;
     return Math.max(current, time);
@@ -119,6 +141,7 @@ export default function App() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
   const [selectionHydrated, setSelectionHydrated] = useState(false);
   const [isOnboarding, setIsOnboarding] = useState(true);
   const [onboardingStep, setOnboardingStep] = useState<"leagues" | "teams">(
@@ -181,6 +204,11 @@ export default function App() {
         return prefs.notifyStart || prefs.notifyScore || prefs.notifyFinal;
       }),
     [cards, notificationPrefs]
+  );
+  const latestUpdated = useMemo(() => getLatestCardUpdated(cards), [cards]);
+  const offlineBannerLabel = useMemo(
+    () => `Offline - ${formatUpdatedLabel(latestUpdated)}`,
+    [latestUpdated]
   );
 
   const handleToggleLeague = useCallback(
@@ -461,6 +489,7 @@ export default function App() {
       const ordered = applyCardOrder(normalized, cardOrderRef.current);
       if (isMountedRef.current) {
         setCards(ordered);
+        setIsOffline(false);
         ensureNotificationPrefs(ordered);
       }
       if (notificationPermissionGranted && hasFetchedOnceRef.current) {
@@ -481,6 +510,7 @@ export default function App() {
     } catch {
       if (isMountedRef.current) {
         setErrorMessage("Unable to load scores. Check your connection.");
+        setIsOffline(true);
       }
     } finally {
       if (isMountedRef.current) {
@@ -648,7 +678,8 @@ export default function App() {
   const showOnboarding = selectionHydrated && isOnboarding;
   const showLoadingState = cards.length === 0 && (isInitialLoading || isFetching);
   const showFullScreenError = cards.length === 0 && !!errorMessage && !isFetching;
-  const showInlineError = cards.length > 0 && !!errorMessage;
+  const showOfflineBanner = cards.length > 0 && isOffline;
+  const showInlineError = cards.length > 0 && !!errorMessage && !isOffline;
 
   if (showSelectionLoading) {
     return (
@@ -973,21 +1004,42 @@ export default function App() {
           refreshing={isFetching}
           onRefresh={fetchScores}
           ListHeaderComponent={
-            showInlineError ? (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorBannerText}>
-                  Couldn't refresh scores.
-                </Text>
-                <Pressable
-                  onPress={handleRetry}
-                  style={({ pressed }) => [
-                    styles.retryButtonSmall,
-                    pressed ? styles.retryButtonPressed : null,
-                  ]}
-                  disabled={isFetching}
-                >
-                  <Text style={styles.retryButtonText}>Retry</Text>
-                </Pressable>
+            showOfflineBanner || showInlineError ? (
+              <View style={styles.listHeader}>
+                {showOfflineBanner ? (
+                  <View style={styles.offlineBanner}>
+                    <Text style={styles.offlineBannerText}>
+                      {offlineBannerLabel}
+                    </Text>
+                    <Pressable
+                      onPress={handleRetry}
+                      style={({ pressed }) => [
+                        styles.retryButtonSmall,
+                        pressed ? styles.retryButtonPressed : null,
+                      ]}
+                      disabled={isFetching}
+                    >
+                      <Text style={styles.retryButtonText}>Retry</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+                {showInlineError ? (
+                  <View style={styles.errorBanner}>
+                    <Text style={styles.errorBannerText}>
+                      Couldn't refresh scores.
+                    </Text>
+                    <Pressable
+                      onPress={handleRetry}
+                      style={({ pressed }) => [
+                        styles.retryButtonSmall,
+                        pressed ? styles.retryButtonPressed : null,
+                      ]}
+                      disabled={isFetching}
+                    >
+                      <Text style={styles.retryButtonText}>Retry</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </View>
             ) : null
           }
@@ -1010,6 +1062,7 @@ const styles = StyleSheet.create({
 
   listContent: { padding: 16, paddingTop: 8, gap: 12 },
   listContentEmpty: { flexGrow: 1, justifyContent: "center" },
+  listHeader: { gap: 10 },
 
   loadingState: {
     flex: 1,
@@ -1050,6 +1103,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   errorBannerText: { color: "rgba(255,255,255,0.8)", fontWeight: "600" },
+  offlineBanner: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  offlineBannerText: { color: "white", fontWeight: "700" },
   retryButton: {
     paddingHorizontal: 18,
     paddingVertical: 10,

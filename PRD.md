@@ -159,7 +159,7 @@ Client:
 - [x] Add auto-refresh interval while app is active.
 - [x] Pause auto-refresh when app goes background/inactive.
 - [x] Add up/down buttons to reorder cards in list.
-- [ ] Persist card order to `AsyncStorage`.
+- [x] Persist card order to `AsyncStorage`.
 - [ ] Restore card order from cache on launch.
 - [ ] Disable reorder buttons at top/bottom edges.
 - [ ] Add lightweight test data for reorder logic in mock.

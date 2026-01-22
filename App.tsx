@@ -38,6 +38,7 @@ type ScoreCard = {
 };
 
 const SCORE_CACHE_KEY = "scores:latest:ui";
+const CARD_ORDER_CACHE_KEY = "cards:order";
 const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
 
 const formatScheduledTime = (startTime: string) => {
@@ -226,6 +227,17 @@ export default function App() {
     [cards.length]
   );
 
+  const persistCardOrder = useCallback(async (nextCards: ScoreCard[]) => {
+    try {
+      await writeCache(
+        CARD_ORDER_CACHE_KEY,
+        nextCards.map((card) => card.id)
+      );
+    } catch {
+      // Card order persistence should not block UI updates.
+    }
+  }, []);
+
   const moveCard = useCallback((fromIndex: number, direction: -1 | 1) => {
     setCards((prev) => {
       const targetIndex = fromIndex + direction;
@@ -240,9 +252,10 @@ export default function App() {
       const next = [...prev];
       const [moved] = next.splice(fromIndex, 1);
       next.splice(targetIndex, 0, moved);
+      void persistCardOrder(next);
       return next;
     });
-  }, []);
+  }, [persistCardOrder]);
 
   const fetchScores = useCallback(async () => {
     if (isFetchingRef.current) return;

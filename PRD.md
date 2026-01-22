@@ -188,7 +188,7 @@ Client:
 - [x] Render team logos in score rows with fallback when missing.
 - [x] Add refresh interval setting (60-120 seconds) and persist user choice.
 - [x] Support NFL week-based scoring windows instead of day-only filtering.
-- [ ] Confirm backend endpoints match PRD contract, including `window=week`.
+- [x] Confirm backend endpoints match PRD contract, including `window=week`.
 - [ ] Set and document `EXPO_PUBLIC_ONLYSCORES_API_BASE_URL` for runtime.
 - [ ] Run end-to-end Expo push notification test with backend events.
 - [ ] Add a clear startup warning when API base URL is missing.

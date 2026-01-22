@@ -1,4 +1,5 @@
 import { Provider, ProviderFetchOptions, ProviderScoresRequest } from "./Provider";
+import { backendContract } from "./backendContract";
 import type {
   ProviderLeague,
   ProviderTeam,
@@ -45,6 +46,8 @@ const resolveTeams = (payload: ProviderTeam[] | ProviderTeamsResponse) =>
 const resolveCards = (payload: ProviderScoreCard[] | ProviderScoresResponse) =>
   Array.isArray(payload) ? payload : payload.cards;
 
+const { endpoints } = backendContract;
+
 const backendProvider: Provider<
   ProviderLeague,
   ProviderTeam,
@@ -54,7 +57,7 @@ const backendProvider: Provider<
   name: "OnlyScores API",
   async getLeagues(options?: ProviderFetchOptions) {
     const payload = await fetchJson<ProviderLeague[] | ProviderLeaguesResponse>(
-      "/v1/leagues",
+      endpoints.leagues,
       options
     );
     return resolveLeagues(payload);
@@ -62,7 +65,7 @@ const backendProvider: Provider<
   async getTeams(leagueId: string, options?: ProviderFetchOptions) {
     const query = buildQuery({ leagueId });
     const payload = await fetchJson<ProviderTeam[] | ProviderTeamsResponse>(
-      `/v1/teams${query}`,
+      `${endpoints.teams}${query}`,
       options
     );
     return resolveTeams(payload);
@@ -77,7 +80,7 @@ const backendProvider: Provider<
       window: request.window,
     });
     const payload = await fetchJson<ProviderScoreCard[] | ProviderScoresResponse>(
-      `/v1/scores${query}`,
+      `${endpoints.scores}${query}`,
       options
     );
     return resolveCards(payload);

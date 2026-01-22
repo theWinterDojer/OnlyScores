@@ -136,9 +136,11 @@ Client:
 5) Performance and QA pass.
 
 ## Current Implementation Notes (as of 2026-01-22)
-- Mobile app fetches TheSportsDB directly; backend endpoints are still pending.
-- Notifications are local alerts with stubbed permissions/token.
-- Card reorder uses up/down controls instead of drag-and-drop.
+- Mobile app uses backend API provider (requires `EXPO_PUBLIC_ONLYSCORES_API_BASE_URL`).
+- Notifications use Expo push permissions/token and backend subscription calls.
+- Card reorder uses drag-and-drop with a drag handle.
+- Refresh interval setting persists between 60-120 seconds.
+- Team logos render with fallback badges when missing.
 
 ## Tasks
 - [x] Create `src/` layout with `components`, `providers`, `types` folders.
@@ -186,3 +188,7 @@ Client:
 - [x] Render team logos in score rows with fallback when missing.
 - [x] Add refresh interval setting (60-120 seconds) and persist user choice.
 - [x] Support NFL week-based scoring windows instead of day-only filtering.
+- [ ] Confirm backend endpoints match PRD contract, including `window=week`.
+- [ ] Set and document `EXPO_PUBLIC_ONLYSCORES_API_BASE_URL` for runtime.
+- [ ] Run end-to-end Expo push notification test with backend events.
+- [ ] Add a clear startup warning when API base URL is missing.

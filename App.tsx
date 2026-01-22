@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -9,7 +10,12 @@ import {
   Pressable,
   ActivityIndicator,
   AppState,
+  LayoutAnimation,
+  PanResponder,
+  Platform,
+  UIManager,
 } from "react-native";
+import type { LayoutChangeEvent } from "react-native";
 import AppHeader from "./src/components/AppHeader";
 import ScoreCardView from "./src/components/ScoreCardView";
 import {
@@ -150,6 +156,52 @@ const applyCardOrder = (cards: ScoreCard[], order?: string[] | null) => {
 const toggleId = (current: string[], id: string) =>
   current.includes(id) ? current.filter((value) => value !== id) : [...current, id];
 
+type DraggableScoreCardProps = {
+  card: ScoreCard;
+  isDragging: boolean;
+  dragTranslation: Animated.Value;
+  onDragStart: (id: string) => void;
+  onDragMove: (dy: number) => void;
+  onDragEnd: () => void;
+  onLayout: (id: string, event: LayoutChangeEvent) => void;
+};
+
+function DraggableScoreCard({
+  card,
+  isDragging,
+  dragTranslation,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
+  onLayout,
+}: DraggableScoreCardProps) {
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => onDragStart(card.id),
+        onPanResponderMove: (_, gestureState) => onDragMove(gestureState.dy),
+        onPanResponderRelease: onDragEnd,
+        onPanResponderTerminate: onDragEnd,
+      }),
+    [card.id, onDragStart, onDragEnd, onDragMove]
+  );
+
+  return (
+    <Animated.View
+      onLayout={(event) => onLayout(card.id, event)}
+      style={[
+        styles.draggableCard,
+        isDragging ? styles.draggableCardActive : null,
+        isDragging ? { transform: [{ translateY: dragTranslation }] } : null,
+      ]}
+    >
+      <ScoreCardView card={card} dragHandleProps={panResponder.panHandlers} />
+    </Animated.View>
+  );
+}
+
 export default function App() {
   const [cards, setCards] = useState<ScoreCard[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -176,11 +228,20 @@ export default function App() {
   const [notificationPermissionGranted, setNotificationPermissionGranted] =
     useState(false);
   const [pushToken, setPushToken] = useState<string | null>(null);
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const cardOrderRef = useRef<string[] | null>(null);
+  const cardsRef = useRef<ScoreCard[]>([]);
+  const dragTranslateY = useRef(new Animated.Value(0)).current;
+  const dragStartYRef = useRef(0);
+  const draggingIdRef = useRef<string | null>(null);
+  const itemLayoutsRef = useRef<Record<string, { y: number; height: number }>>(
+    {}
+  );
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
+  const isDragging = draggingCardId !== null;
   const listContentStyle = useMemo(
     () => [
       styles.listContent,
@@ -218,6 +279,19 @@ export default function App() {
     [cards, notificationPrefs]
   );
   const latestUpdated = useMemo(() => getLatestCardUpdated(cards), [cards]);
+
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
+
+  useEffect(() => {
+    if (
+      Platform.OS === "android" &&
+      UIManager.setLayoutAnimationEnabledExperimental
+    ) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
   const offlineBannerLabel = useMemo(
     () => `Offline - ${formatUpdatedLabel(latestUpdated)}`,
     [latestUpdated]
@@ -402,24 +476,72 @@ export default function App() {
     [persistNotificationPrefs]
   );
 
-  const moveCard = useCallback((fromIndex: number, direction: -1 | 1) => {
-    setCards((prev) => {
-      const targetIndex = fromIndex + direction;
-      if (
-        fromIndex < 0 ||
-        targetIndex < 0 ||
-        fromIndex >= prev.length ||
-        targetIndex >= prev.length
-      ) {
-        return prev;
-      }
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(targetIndex, 0, moved);
-      void persistCardOrder(next);
-      return next;
-    });
-  }, [persistCardOrder]);
+  const handleCardLayout = useCallback(
+    (id: string, event: LayoutChangeEvent) => {
+      const { y, height } = event.nativeEvent.layout;
+      itemLayoutsRef.current[id] = { y, height };
+    },
+    []
+  );
+
+  const beginDrag = useCallback(
+    (id: string) => {
+      const layout = itemLayoutsRef.current[id];
+      if (!layout) return;
+      draggingIdRef.current = id;
+      dragStartYRef.current = layout.y;
+      dragTranslateY.setValue(0);
+      setDraggingCardId(id);
+    },
+    [dragTranslateY]
+  );
+
+  const handleDragMove = useCallback(
+    (dy: number) => {
+      const activeId = draggingIdRef.current;
+      if (!activeId) return;
+      dragTranslateY.setValue(dy);
+      const currentCards = cardsRef.current;
+      const dragY = dragStartYRef.current + dy;
+      let targetIndex = 0;
+
+      currentCards.forEach((card) => {
+        if (card.id === activeId) return;
+        const layout = itemLayoutsRef.current[card.id];
+        if (!layout) {
+          targetIndex += 1;
+          return;
+        }
+        const midpoint = layout.y + layout.height / 2;
+        if (dragY >= midpoint) {
+          targetIndex += 1;
+        }
+      });
+
+      const currentIndex = currentCards.findIndex((card) => card.id === activeId);
+      if (currentIndex < 0 || targetIndex === currentIndex) return;
+
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setCards((prev) => {
+        const fromIndex = prev.findIndex((card) => card.id === activeId);
+        if (fromIndex < 0) return prev;
+        const next = [...prev];
+        const [moved] = next.splice(fromIndex, 1);
+        const insertIndex = Math.min(Math.max(targetIndex, 0), next.length);
+        next.splice(insertIndex, 0, moved);
+        return next;
+      });
+    },
+    [dragTranslateY]
+  );
+
+  const handleDragEnd = useCallback(() => {
+    if (!draggingIdRef.current) return;
+    dragTranslateY.setValue(0);
+    draggingIdRef.current = null;
+    setDraggingCardId(null);
+    void persistCardOrder(cardsRef.current);
+  }, [dragTranslateY, persistCardOrder]);
 
   const loadLeagues = useCallback(async () => {
     setIsLoadingLeagues(true);
@@ -996,17 +1118,20 @@ export default function App() {
           data={cards}
           keyExtractor={(c) => c.id}
           contentContainerStyle={listContentStyle}
-          renderItem={({ item, index }) => (
-            <ScoreCardView
+          renderItem={({ item }) => (
+            <DraggableScoreCard
               card={item}
-              onMoveUp={() => moveCard(index, -1)}
-              onMoveDown={() => moveCard(index, 1)}
-              canMoveUp={index > 0}
-              canMoveDown={index < cards.length - 1}
+              isDragging={draggingCardId === item.id}
+              dragTranslation={dragTranslateY}
+              onDragStart={beginDrag}
+              onDragMove={handleDragMove}
+              onDragEnd={handleDragEnd}
+              onLayout={handleCardLayout}
             />
           )}
           refreshing={isFetching}
           onRefresh={fetchScores}
+          scrollEnabled={!isDragging}
           ListHeaderComponent={
             showOfflineBanner || showInlineError ? (
               <View style={styles.listHeader}>
@@ -1067,6 +1192,15 @@ const styles = StyleSheet.create({
   listContent: { padding: 16, paddingTop: 8, gap: 12 },
   listContentEmpty: { flexGrow: 1, justifyContent: "center" },
   listHeader: { gap: 10 },
+  draggableCard: { position: "relative" },
+  draggableCardActive: {
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
 
   loadingState: {
     flex: 1,

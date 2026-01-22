@@ -1,15 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import type { ViewProps } from "react-native";
 
 import GameRow from "./GameRow";
 import { ScoreCard } from "../types/score";
 
 type ScoreCardViewProps = {
   card: ScoreCard;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
+  dragHandleProps?: ViewProps;
 };
 
 const formatUpdatedLabel = (timestamp?: string) => {
@@ -25,10 +23,7 @@ const formatUpdatedLabel = (timestamp?: string) => {
 
 export default function ScoreCardView({
   card,
-  onMoveUp,
-  onMoveDown,
-  canMoveUp,
-  canMoveDown,
+  dragHandleProps,
 }: ScoreCardViewProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -59,31 +54,8 @@ export default function ScoreCardView({
               </Text>
             </Pressable>
           ) : null}
-          <View style={styles.reorderRow}>
-            <Pressable
-              onPress={onMoveUp}
-              hitSlop={10}
-              disabled={!canMoveUp}
-              style={({ pressed }) => [
-                styles.reorderButton,
-                !canMoveUp ? styles.reorderButtonDisabled : null,
-                pressed && canMoveUp ? styles.reorderButtonPressed : null,
-              ]}
-            >
-              <Text style={styles.reorderButtonText}>Up</Text>
-            </Pressable>
-            <Pressable
-              onPress={onMoveDown}
-              hitSlop={10}
-              disabled={!canMoveDown}
-              style={({ pressed }) => [
-                styles.reorderButton,
-                !canMoveDown ? styles.reorderButtonDisabled : null,
-                pressed && canMoveDown ? styles.reorderButtonPressed : null,
-              ]}
-            >
-              <Text style={styles.reorderButtonText}>Down</Text>
-            </Pressable>
+          <View style={styles.dragHandle} {...dragHandleProps}>
+            <Text style={styles.dragHandleText}>Drag</Text>
           </View>
         </View>
       </View>
@@ -118,16 +90,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   linkText: { color: "rgba(255,255,255,0.75)", fontWeight: "600" },
-  reorderRow: { flexDirection: "row", gap: 8 },
-  reorderButton: {
+  dragHandle: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.12)",
   },
-  reorderButtonDisabled: { opacity: 0.4 },
-  reorderButtonPressed: { opacity: 0.8 },
-  reorderButtonText: {
+  dragHandleText: {
     color: "rgba(255,255,255,0.85)",
     fontSize: 12,
     fontWeight: "700",

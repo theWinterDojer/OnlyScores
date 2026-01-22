@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -37,6 +37,7 @@ type ScoreCard = {
 };
 
 const SCORE_CACHE_KEY = "scores:latest:ui";
+const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
 
 const formatScheduledTime = (startTime: string) => {
   const date = new Date(startTime);
@@ -179,6 +180,7 @@ export default function App() {
   const [isFetching, setIsFetching] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+  const isFetchingRef = useRef(false);
   const listContentStyle = useMemo(
     () => [
       styles.listContent,
@@ -187,29 +189,9 @@ export default function App() {
     [cards.length]
   );
 
-  useEffect(() => {
-    const hydrateAndFetch = async () => {
-      try {
-        const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
-        if (cached && isMountedRef.current) {
-          setCards(cached);
-        }
-      } catch {
-        // Ignore cache hydration failures.
-      }
-
-      await fetchScores();
-    };
-
-    hydrateAndFetch();
-
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  const fetchScores = async () => {
-    if (isFetching) return;
+  const fetchScores = useCallback(async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     setIsFetching(true);
     setErrorMessage(null);
 
@@ -242,8 +224,38 @@ export default function App() {
         setIsInitialLoading(false);
         setIsFetching(false);
       }
+      isFetchingRef.current = false;
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const hydrateAndFetch = async () => {
+      try {
+        const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
+        if (cached && isMountedRef.current) {
+          setCards(cached);
+        }
+      } catch {
+        // Ignore cache hydration failures.
+      }
+
+      await fetchScores();
+    };
+
+    hydrateAndFetch();
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [fetchScores]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchScores();
+    }, AUTO_REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [fetchScores]);
 
   const handleRetry = () => {
     if (isFetching) return;

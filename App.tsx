@@ -50,6 +50,9 @@ const DEFAULT_REFRESH_INTERVAL_SECONDS = 60;
 const REFRESH_INTERVAL_MIN_SECONDS = 60;
 const REFRESH_INTERVAL_MAX_SECONDS = 120;
 const REFRESH_INTERVAL_STEP_SECONDS = 10;
+const API_BASE_URL = process.env.EXPO_PUBLIC_ONLYSCORES_API_BASE_URL;
+const MISSING_API_BASE_WARNING =
+  "Missing API base URL. Set EXPO_PUBLIC_ONLYSCORES_API_BASE_URL.";
 
 type SelectionPreferences = {
   leagueIds: string[];
@@ -280,6 +283,7 @@ export default function App() {
   );
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
+  const apiBaseMissing = !API_BASE_URL || API_BASE_URL.trim().length === 0;
   const isDragging = draggingCardId !== null;
   const refreshIntervalMs = refreshIntervalSeconds * 1000;
   const listContentStyle = useMemo(
@@ -331,7 +335,7 @@ export default function App() {
     ) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
-  }, []);
+  }, [apiBaseMissing]);
 
   useEffect(() => {
     const hydrateRefreshInterval = async () => {
@@ -516,7 +520,7 @@ export default function App() {
         // Notification preference persistence should not block UI updates.
       }
     },
-    []
+    [apiBaseMissing]
   );
 
   const ensureNotificationPrefs = useCallback(
@@ -630,6 +634,13 @@ export default function App() {
   }, [dragTranslateY, persistCardOrder]);
 
   const loadLeagues = useCallback(async () => {
+    if (apiBaseMissing) {
+      if (isMountedRef.current) {
+        setOnboardingError(MISSING_API_BASE_WARNING);
+        setIsLoadingLeagues(false);
+      }
+      return;
+    }
     setIsLoadingLeagues(true);
     setOnboardingError(null);
     try {
@@ -651,6 +662,13 @@ export default function App() {
 
   const loadTeamsForLeagues = useCallback(
     async (leagueIds: string[]) => {
+      if (apiBaseMissing) {
+        if (isMountedRef.current) {
+          setOnboardingError(MISSING_API_BASE_WARNING);
+          setIsLoadingTeams(false);
+        }
+        return;
+      }
       if (leagueIds.length === 0) {
         setTeamsByLeagueId({});
         setSelectedTeamIds([]);
@@ -684,6 +702,16 @@ export default function App() {
   );
 
   const fetchScores = useCallback(async () => {
+    if (apiBaseMissing) {
+      if (isMountedRef.current) {
+        setErrorMessage(MISSING_API_BASE_WARNING);
+        setIsInitialLoading(false);
+        setIsFetching(false);
+        setIsOffline(false);
+      }
+      isFetchingRef.current = false;
+      return;
+    }
     if (isOnboarding) return;
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
@@ -762,12 +790,7 @@ export default function App() {
       }
       isFetchingRef.current = false;
     }
-  }, [
-    isOnboarding,
-    selectedLeagueIds,
-    selectedTeamIds,
-    leagues,
-  ]);
+  }, [apiBaseMissing, isOnboarding, selectedLeagueIds, selectedTeamIds, leagues]);
 
   useEffect(() => {
     if (!selectionHydrated || !isOnboarding || onboardingStep !== "leagues") {
@@ -937,6 +960,7 @@ export default function App() {
   const showFullScreenError = cards.length === 0 && !!errorMessage && !isFetching;
   const showOfflineBanner = cards.length > 0 && isOffline;
   const showInlineError = cards.length > 0 && !!errorMessage && !isOffline;
+  const showHeaderBanner = showOfflineBanner || showInlineError;
 
   if (showSelectionLoading) {
     return (
@@ -1280,7 +1304,7 @@ export default function App() {
         <View style={styles.errorState}>
           <Text style={styles.errorTitle}>Scores unavailable</Text>
           <Text style={styles.errorBody}>
-            We couldn't refresh scores right now.
+            {errorMessage ?? "We couldn't refresh scores right now."}
           </Text>
           <Pressable
             onPress={handleRetry}
@@ -1313,7 +1337,7 @@ export default function App() {
           onRefresh={fetchScores}
           scrollEnabled={!isDragging}
           ListHeaderComponent={
-            showOfflineBanner || showInlineError ? (
+            showHeaderBanner ? (
               <View style={styles.listHeader}>
                 {showOfflineBanner ? (
                   <View style={styles.offlineBanner}>
@@ -1335,7 +1359,7 @@ export default function App() {
                 {showInlineError ? (
                   <View style={styles.errorBanner}>
                     <Text style={styles.errorBannerText}>
-                      Couldn't refresh scores.
+                      {errorMessage ?? "Couldn't refresh scores."}
                     </Text>
                     <Pressable
                       onPress={handleRetry}

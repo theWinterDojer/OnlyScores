@@ -191,4 +191,4 @@ Client:
 - [x] Confirm backend endpoints match PRD contract, including `window=week`.
 - [x] Set and document `EXPO_PUBLIC_ONLYSCORES_API_BASE_URL` for runtime.
 - [ ] Run end-to-end Expo push notification test with backend events.
-- [ ] Add a clear startup warning when API base URL is missing.
+- [x] Add a clear startup warning when API base URL is missing.

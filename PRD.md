@@ -166,4 +166,4 @@ Client:
 - [x] Create `TheSportsDBProvider` implementing the provider interface.
 - [x] Map TheSportsDB responses to internal game model.
 - [x] Switch provider registry to use TheSportsDB (behind interface).
-- [ ] Audit UI to confirm no backend, accounts, or router usage.
+- [x] Audit UI to confirm no backend, accounts, or router usage.

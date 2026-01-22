@@ -181,7 +181,7 @@ Client:
 - [x] Add explicit offline indicator with last updated timestamp context.
 - [x] Route mobile data access through backend API endpoints and keep provider adapters server-side.
 - [x] Filter score cards by selected team ids when provided.
-- [ ] Wire real Expo push permissions/token + backend event delivery; remove local alert fallback.
+- [x] Wire real Expo push permissions/token + backend event delivery; remove local alert fallback.
 - [ ] Replace reorder buttons with drag-and-drop list and persist order.
 - [ ] Render team logos in score rows with fallback when missing.
 - [ ] Add refresh interval setting (60-120 seconds) and persist user choice.

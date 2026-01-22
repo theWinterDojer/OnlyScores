@@ -13,9 +13,7 @@ import {
 import AppHeader from "./src/components/AppHeader";
 import ScoreCardView from "./src/components/ScoreCardView";
 import {
-  buildNotificationEvents,
   configureNotifications,
-  deliverNotificationEvents,
   ensureNotificationPermissions,
   fetchExpoPushToken,
   getCachedPushToken,
@@ -183,8 +181,6 @@ export default function App() {
   const cardOrderRef = useRef<string[] | null>(null);
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
-  const previousCardsRef = useRef<ScoreCard[]>([]);
-  const hasFetchedOnceRef = useRef(false);
   const listContentStyle = useMemo(
     () => [
       styles.listContent,
@@ -512,16 +508,6 @@ export default function App() {
         setIsOffline(false);
         ensureNotificationPrefs(ordered);
       }
-      if (notificationPermissionGranted && hasFetchedOnceRef.current) {
-        const events = buildNotificationEvents(
-          previousCardsRef.current,
-          ordered,
-          notificationPrefs
-        );
-        void deliverNotificationEvents(events);
-      }
-      previousCardsRef.current = ordered;
-      hasFetchedOnceRef.current = true;
       try {
         await writeCache(SCORE_CACHE_KEY, ordered);
       } catch {
@@ -543,8 +529,6 @@ export default function App() {
     isOnboarding,
     selectedLeagueIds,
     selectedTeamIds,
-    notificationPermissionGranted,
-    notificationPrefs,
   ]);
 
   useEffect(() => {

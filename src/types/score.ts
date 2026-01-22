@@ -14,4 +14,5 @@ export type ScoreCard = {
   id: string;
   title: string; // e.g., "NBA"
   games: Game[];
+  lastUpdated?: string;
 };

@@ -1,61 +1,35 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-export type GameStatus = "scheduled" | "live" | "final";
+import GameRow from "./GameRow";
+import { ScoreCard } from "../types/score";
 
-export type Game = {
-  id: string;
-  time: string; // e.g., "7:30 PM"
-  awayTeam: string;
-  homeTeam: string;
-  awayScore?: number;
-  homeScore?: number;
-  status: GameStatus;
+type ScoreCardViewProps = {
+  card: ScoreCard;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 };
 
-export type ScoreCard = {
-  id: string;
-  title: string; // e.g., "NBA"
-  games: Game[];
+const formatUpdatedLabel = (timestamp?: string) => {
+  if (!timestamp) return "Updated --";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "Updated --";
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const period = hours >= 12 ? "PM" : "AM";
+  const normalizedHours = hours % 12 === 0 ? 12 : hours % 12;
+  return `Updated ${normalizedHours}:${minutes} ${period}`;
 };
 
-function StatusPill({ status }: { status: GameStatus }) {
-  const label = status === "scheduled" ? "UPCOMING" : status.toUpperCase();
-  return (
-    <View style={styles.pill}>
-      <Text style={styles.pillText}>{label}</Text>
-    </View>
-  );
-}
-
-function GameRow({ game }: { game: Game }) {
-  const showScores = game.status !== "scheduled";
-  return (
-    <View style={styles.gameRow}>
-      <View style={styles.gameLeft}>
-        <Text style={styles.teamLine}>
-          <Text style={styles.teamName}>{game.awayTeam}</Text>
-          {showScores ? (
-            <Text style={styles.score}>  {game.awayScore ?? "-"}</Text>
-          ) : null}
-        </Text>
-        <Text style={styles.teamLine}>
-          <Text style={styles.teamName}>{game.homeTeam}</Text>
-          {showScores ? (
-            <Text style={styles.score}>  {game.homeScore ?? "-"}</Text>
-          ) : null}
-        </Text>
-      </View>
-
-      <View style={styles.gameRight}>
-        <StatusPill status={game.status} />
-        <Text style={styles.timeText}>{game.time}</Text>
-      </View>
-    </View>
-  );
-}
-
-export default function ScoreCardView({ card }: { card: ScoreCard }) {
+export default function ScoreCardView({
+  card,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+}: ScoreCardViewProps) {
   const [expanded, setExpanded] = useState(false);
 
   const visibleGames = useMemo(() => {
@@ -68,15 +42,50 @@ export default function ScoreCardView({ card }: { card: ScoreCard }) {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{card.title}</Text>
+        <View style={styles.cardTitleStack}>
+          <Text style={styles.cardTitle}>{card.title}</Text>
+          <Text style={styles.updatedText}>
+            {formatUpdatedLabel(card.lastUpdated)}
+          </Text>
+        </View>
 
-        {overflow ? (
-          <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={10}>
-            <Text style={styles.linkText}>
-              {expanded ? "Show less" : `Show more (${card.games.length - 10})`}
-            </Text>
-          </Pressable>
-        ) : null}
+        <View style={styles.cardActions}>
+          {overflow ? (
+            <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={10}>
+              <Text style={styles.linkText}>
+                {expanded
+                  ? "Show less"
+                  : `Show more (${card.games.length - 10})`}
+              </Text>
+            </Pressable>
+          ) : null}
+          <View style={styles.reorderRow}>
+            <Pressable
+              onPress={onMoveUp}
+              hitSlop={10}
+              disabled={!canMoveUp}
+              style={({ pressed }) => [
+                styles.reorderButton,
+                !canMoveUp ? styles.reorderButtonDisabled : null,
+                pressed && canMoveUp ? styles.reorderButtonPressed : null,
+              ]}
+            >
+              <Text style={styles.reorderButtonText}>Up</Text>
+            </Pressable>
+            <Pressable
+              onPress={onMoveDown}
+              hitSlop={10}
+              disabled={!canMoveDown}
+              style={({ pressed }) => [
+                styles.reorderButton,
+                !canMoveDown ? styles.reorderButtonDisabled : null,
+                pressed && canMoveDown ? styles.reorderButtonPressed : null,
+              ]}
+            >
+              <Text style={styles.reorderButtonText}>Down</Text>
+            </Pressable>
+          </View>
+        </View>
       </View>
 
       {visibleGames.map((g) => (
@@ -96,38 +105,31 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     marginBottom: 10,
   },
   cardTitle: { color: "white", fontSize: 18, fontWeight: "800" },
-  linkText: { color: "rgba(255,255,255,0.75)", fontWeight: "600" },
-
-  gameRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.06)",
+  cardTitleStack: { gap: 2 },
+  cardActions: { alignItems: "flex-end", gap: 8 },
+  updatedText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    fontWeight: "600",
   },
-  gameLeft: { flex: 1, paddingRight: 12 },
-  teamLine: { color: "white", fontSize: 16, lineHeight: 20 },
-  teamName: { fontWeight: "700", color: "white" },
-  score: { fontWeight: "800", color: "white" },
-
-  gameRight: { alignItems: "flex-end", gap: 6 },
-  timeText: { color: "rgba(255,255,255,0.75)", fontWeight: "600" },
-
-  pill: {
-    paddingHorizontal: 8,
+  linkText: { color: "rgba(255,255,255,0.75)", fontWeight: "600" },
+  reorderRow: { flexDirection: "row", gap: 8 },
+  reorderButton: {
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
-  pillText: {
+  reorderButtonDisabled: { opacity: 0.4 },
+  reorderButtonPressed: { opacity: 0.8 },
+  reorderButtonText: {
     color: "rgba(255,255,255,0.85)",
     fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    fontWeight: "700",
   },
 });

@@ -158,7 +158,7 @@ Client:
 - [x] Add pull-to-refresh on score list.
 - [x] Add auto-refresh interval while app is active.
 - [x] Pause auto-refresh when app goes background/inactive.
-- [ ] Add up/down buttons to reorder cards in list.
+- [x] Add up/down buttons to reorder cards in list.
 - [ ] Persist card order to `AsyncStorage`.
 - [ ] Restore card order from cache on launch.
 - [ ] Disable reorder buttons at top/bottom edges.

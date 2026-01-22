@@ -139,7 +139,15 @@ function GameRow({ game }: { game: Game }) {
   );
 }
 
-function ScoreCardView({ card }: { card: ScoreCard }) {
+function ScoreCardView({
+  card,
+  onMoveUp,
+  onMoveDown,
+}: {
+  card: ScoreCard;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   const visibleGames = useMemo(() => {
@@ -159,13 +167,39 @@ function ScoreCardView({ card }: { card: ScoreCard }) {
           </Text>
         </View>
 
-        {overflow ? (
-          <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={10}>
-            <Text style={styles.linkText}>
-              {expanded ? "Show less" : `Show more (${card.games.length - 10})`}
-            </Text>
-          </Pressable>
-        ) : null}
+        <View style={styles.cardActions}>
+          {overflow ? (
+            <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={10}>
+              <Text style={styles.linkText}>
+                {expanded
+                  ? "Show less"
+                  : `Show more (${card.games.length - 10})`}
+              </Text>
+            </Pressable>
+          ) : null}
+          <View style={styles.reorderRow}>
+            <Pressable
+              onPress={onMoveUp}
+              hitSlop={10}
+              style={({ pressed }) => [
+                styles.reorderButton,
+                pressed ? styles.reorderButtonPressed : null,
+              ]}
+            >
+              <Text style={styles.reorderButtonText}>Up</Text>
+            </Pressable>
+            <Pressable
+              onPress={onMoveDown}
+              hitSlop={10}
+              style={({ pressed }) => [
+                styles.reorderButton,
+                pressed ? styles.reorderButtonPressed : null,
+              ]}
+            >
+              <Text style={styles.reorderButtonText}>Down</Text>
+            </Pressable>
+          </View>
+        </View>
       </View>
 
       {visibleGames.map((g) => (
@@ -191,6 +225,24 @@ export default function App() {
     ],
     [cards.length]
   );
+
+  const moveCard = useCallback((fromIndex: number, direction: -1 | 1) => {
+    setCards((prev) => {
+      const targetIndex = fromIndex + direction;
+      if (
+        fromIndex < 0 ||
+        targetIndex < 0 ||
+        fromIndex >= prev.length ||
+        targetIndex >= prev.length
+      ) {
+        return prev;
+      }
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  }, []);
 
   const fetchScores = useCallback(async () => {
     if (isFetchingRef.current) return;
@@ -330,7 +382,13 @@ export default function App() {
           data={cards}
           keyExtractor={(c) => c.id}
           contentContainerStyle={listContentStyle}
-          renderItem={({ item }) => <ScoreCardView card={item} />}
+          renderItem={({ item, index }) => (
+            <ScoreCardView
+              card={item}
+              onMoveUp={() => moveCard(index, -1)}
+              onMoveDown={() => moveCard(index, 1)}
+            />
+          )}
           refreshing={isFetching}
           onRefresh={fetchScores}
           ListHeaderComponent={
@@ -441,12 +499,26 @@ const styles = StyleSheet.create({
   },
   cardTitle: { color: "white", fontSize: 18, fontWeight: "800" },
   cardTitleStack: { gap: 2 },
+  cardActions: { alignItems: "flex-end", gap: 8 },
   updatedText: {
     color: "rgba(255,255,255,0.55)",
     fontSize: 12,
     fontWeight: "600",
   },
   linkText: { color: "rgba(255,255,255,0.75)", fontWeight: "600" },
+  reorderRow: { flexDirection: "row", gap: 8 },
+  reorderButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  reorderButtonPressed: { opacity: 0.8 },
+  reorderButtonText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   gameRow: {
     flexDirection: "row",

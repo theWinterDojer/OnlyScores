@@ -185,4 +185,4 @@ Client:
 - [x] Replace reorder buttons with drag-and-drop list and persist order.
 - [x] Render team logos in score rows with fallback when missing.
 - [x] Add refresh interval setting (60-120 seconds) and persist user choice.
-- [ ] Support NFL week-based scoring windows instead of day-only filtering.
+- [x] Support NFL week-based scoring windows instead of day-only filtering.

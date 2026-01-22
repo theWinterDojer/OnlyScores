@@ -74,6 +74,7 @@ const backendProvider: Provider<
       leagueIds,
       teamIds,
       date: request.date,
+      window: request.window,
     });
     const payload = await fetchJson<ProviderScoreCard[] | ProviderScoresResponse>(
       `/v1/scores${query}`,

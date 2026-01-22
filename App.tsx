@@ -32,6 +32,7 @@ import {
   NotificationPrefsByCard,
   NotificationSettingKey,
 } from "./src/types/notifications";
+import type { ProviderScoresRequest } from "./src/providers/Provider";
 import type {
   ProviderGame,
   ProviderLeague,
@@ -53,6 +54,13 @@ const REFRESH_INTERVAL_STEP_SECONDS = 10;
 type SelectionPreferences = {
   leagueIds: string[];
   teamIds: string[];
+};
+
+const formatLocalDateKey = (value: Date) => {
+  const year = value.getFullYear();
+  const month = `${value.getMonth() + 1}`.padStart(2, "0");
+  const day = `${value.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 const formatScheduledTime = (startTime: string) => {
@@ -103,6 +111,16 @@ const getLatestCardUpdated = (cards: ScoreCard[]) => {
   }, null);
   if (latest === null) return undefined;
   return new Date(latest).toISOString();
+};
+
+const isNflLeague = (league: ProviderLeague) => {
+  const normalizedId = league.id.trim().toLowerCase();
+  const normalizedName = league.name.trim().toLowerCase();
+  return (
+    normalizedId === "nfl" ||
+    normalizedId.startsWith("nfl-") ||
+    normalizedName.includes("nfl")
+  );
 };
 
 type TeamDisplay = {
@@ -674,11 +692,40 @@ export default function App() {
 
     try {
       const provider = getProvider();
-      const request = {
-        leagueIds: selectedLeagueIds,
-        teamIds: selectedTeamIds,
-      };
-      const providerCards = await provider.getScores(request);
+      const today = formatLocalDateKey(new Date());
+      const nflLeagueIdSet = new Set(
+        leagues.filter(isNflLeague).map((league) => league.id)
+      );
+      const nflLeagueIds = selectedLeagueIds.filter((id) =>
+        nflLeagueIdSet.has(id)
+      );
+      const nonNflLeagueIds = selectedLeagueIds.filter(
+        (id) => !nflLeagueIdSet.has(id)
+      );
+      const requests: ProviderScoresRequest[] = [];
+      if (nflLeagueIds.length > 0) {
+        requests.push({
+          leagueIds: nflLeagueIds,
+          teamIds: selectedTeamIds,
+          date: today,
+          window: "week",
+        });
+      }
+      if (nonNflLeagueIds.length > 0) {
+        requests.push({
+          leagueIds: nonNflLeagueIds,
+          teamIds: selectedTeamIds,
+        });
+      }
+      if (requests.length === 0) {
+        requests.push({
+          leagueIds: selectedLeagueIds,
+          teamIds: selectedTeamIds,
+        });
+      }
+      const providerCards = (
+        await Promise.all(requests.map((request) => provider.getScores(request)))
+      ).flat();
       const filteredCards = filterCardsByTeamIds(
         providerCards,
         selectedTeamIds
@@ -719,6 +766,7 @@ export default function App() {
     isOnboarding,
     selectedLeagueIds,
     selectedTeamIds,
+    leagues,
   ]);
 
   useEffect(() => {

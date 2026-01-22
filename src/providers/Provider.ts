@@ -6,6 +6,7 @@ export type ProviderScoresRequest = {
   leagueIds?: string[];
   teamIds?: string[];
   date?: string;
+  window?: "day" | "week";
 };
 
 export interface Provider<League = unknown, Team = unknown, ScoreCard = unknown> {

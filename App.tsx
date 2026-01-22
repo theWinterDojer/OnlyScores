@@ -44,7 +44,11 @@ const SCORE_CACHE_KEY = "scores:latest:ui";
 const CARD_ORDER_CACHE_KEY = "cards:order";
 const SELECTION_CACHE_KEY = "selection:preferences";
 const NOTIFICATION_PREFS_CACHE_KEY = "cards:notifications";
-const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
+const REFRESH_INTERVAL_CACHE_KEY = "settings:refresh-interval-seconds";
+const DEFAULT_REFRESH_INTERVAL_SECONDS = 60;
+const REFRESH_INTERVAL_MIN_SECONDS = 60;
+const REFRESH_INTERVAL_MAX_SECONDS = 120;
+const REFRESH_INTERVAL_STEP_SECONDS = 10;
 
 type SelectionPreferences = {
   leagueIds: string[];
@@ -243,6 +247,9 @@ export default function App() {
     useState(false);
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+  const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState(
+    DEFAULT_REFRESH_INTERVAL_SECONDS
+  );
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const cardOrderRef = useRef<string[] | null>(null);
@@ -256,6 +263,7 @@ export default function App() {
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const isDragging = draggingCardId !== null;
+  const refreshIntervalMs = refreshIntervalSeconds * 1000;
   const listContentStyle = useMemo(
     () => [
       styles.listContent,
@@ -305,6 +313,29 @@ export default function App() {
     ) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
+  }, []);
+
+  useEffect(() => {
+    const hydrateRefreshInterval = async () => {
+      try {
+        const cached = await readCache<number>(REFRESH_INTERVAL_CACHE_KEY);
+        if (typeof cached !== "number" || !Number.isFinite(cached)) return;
+        const rounded =
+          Math.round(cached / REFRESH_INTERVAL_STEP_SECONDS) *
+          REFRESH_INTERVAL_STEP_SECONDS;
+        const normalized = Math.min(
+          REFRESH_INTERVAL_MAX_SECONDS,
+          Math.max(REFRESH_INTERVAL_MIN_SECONDS, rounded)
+        );
+        if (isMountedRef.current) {
+          setRefreshIntervalSeconds(normalized);
+        }
+      } catch {
+        // Ignore refresh interval hydration failures.
+      }
+    };
+
+    hydrateRefreshInterval();
   }, []);
   const offlineBannerLabel = useMemo(
     () => `Offline - ${formatUpdatedLabel(latestUpdated)}`,
@@ -488,6 +519,29 @@ export default function App() {
       });
     },
     [persistNotificationPrefs]
+  );
+
+  const persistRefreshInterval = useCallback(async (nextSeconds: number) => {
+    try {
+      await writeCache(REFRESH_INTERVAL_CACHE_KEY, nextSeconds);
+    } catch {
+      // Refresh interval persistence should not block UI updates.
+    }
+  }, []);
+
+  const updateRefreshInterval = useCallback(
+    (nextSeconds: number) => {
+      const rounded =
+        Math.round(nextSeconds / REFRESH_INTERVAL_STEP_SECONDS) *
+        REFRESH_INTERVAL_STEP_SECONDS;
+      const normalized = Math.min(
+        REFRESH_INTERVAL_MAX_SECONDS,
+        Math.max(REFRESH_INTERVAL_MIN_SECONDS, rounded)
+      );
+      setRefreshIntervalSeconds(normalized);
+      void persistRefreshInterval(normalized);
+    },
+    [persistRefreshInterval]
   );
 
   const handleCardLayout = useCallback(
@@ -721,8 +775,8 @@ export default function App() {
     if (autoRefreshRef.current) return;
     autoRefreshRef.current = setInterval(() => {
       fetchScores();
-    }, AUTO_REFRESH_INTERVAL_MS);
-  }, [fetchScores]);
+    }, refreshIntervalMs);
+  }, [fetchScores, refreshIntervalMs]);
 
   const stopAutoRefresh = useCallback(() => {
     if (!autoRefreshRef.current) return;
@@ -788,6 +842,13 @@ export default function App() {
     };
   }, [fetchScores, startAutoRefresh, stopAutoRefresh, isOnboarding]);
 
+  useEffect(() => {
+    if (isOnboarding) return;
+    if (appStateRef.current !== "active") return;
+    stopAutoRefresh();
+    startAutoRefresh();
+  }, [isOnboarding, startAutoRefresh, stopAutoRefresh, refreshIntervalMs]);
+
   const handleRetry = () => {
     if (isFetching) return;
     fetchScores();
@@ -800,6 +861,14 @@ export default function App() {
   const handleCloseSettings = () => {
     setIsSettingsOpen(false);
   };
+
+  const handleDecreaseRefresh = useCallback(() => {
+    updateRefreshInterval(refreshIntervalSeconds - REFRESH_INTERVAL_STEP_SECONDS);
+  }, [refreshIntervalSeconds, updateRefreshInterval]);
+
+  const handleIncreaseRefresh = useCallback(() => {
+    updateRefreshInterval(refreshIntervalSeconds + REFRESH_INTERVAL_STEP_SECONDS);
+  }, [refreshIntervalSeconds, updateRefreshInterval]);
 
   const handleToggleNotification = useCallback(
     (cardId: string, key: NotificationSettingKey) => {
@@ -1001,6 +1070,55 @@ export default function App() {
           onActionPress={handleCloseSettings}
         />
         <ScrollView contentContainerStyle={styles.settingsContent}>
+          <View style={styles.settingsCard}>
+            <Text style={styles.settingsCardTitle}>Refresh interval</Text>
+            <View style={styles.settingsToggleRow}>
+              <Text style={styles.settingsToggleLabel}>Every</Text>
+              <View style={styles.refreshControl}>
+                <Pressable
+                  onPress={handleDecreaseRefresh}
+                  disabled={refreshIntervalSeconds <= REFRESH_INTERVAL_MIN_SECONDS}
+                  style={({ pressed }) => [
+                    styles.toggleButton,
+                    styles.toggleButtonOff,
+                    pressed ? styles.toggleButtonPressed : null,
+                    refreshIntervalSeconds <= REFRESH_INTERVAL_MIN_SECONDS
+                      ? styles.toggleButtonDisabled
+                      : null,
+                  ]}
+                >
+                  <Text style={[styles.toggleButtonText, styles.toggleButtonTextOff]}>
+                    -
+                  </Text>
+                </Pressable>
+                <View style={styles.refreshValue}>
+                  <Text style={styles.refreshValueText}>
+                    {refreshIntervalSeconds}s
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={handleIncreaseRefresh}
+                  disabled={refreshIntervalSeconds >= REFRESH_INTERVAL_MAX_SECONDS}
+                  style={({ pressed }) => [
+                    styles.toggleButton,
+                    styles.toggleButtonOff,
+                    pressed ? styles.toggleButtonPressed : null,
+                    refreshIntervalSeconds >= REFRESH_INTERVAL_MAX_SECONDS
+                      ? styles.toggleButtonDisabled
+                      : null,
+                  ]}
+                >
+                  <Text style={[styles.toggleButtonText, styles.toggleButtonTextOff]}>
+                    +
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+            <Text style={styles.refreshHint}>
+              Range {REFRESH_INTERVAL_MIN_SECONDS}-{REFRESH_INTERVAL_MAX_SECONDS}{" "}
+              seconds.
+            </Text>
+          </View>
           {cards.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No cards yet</Text>
@@ -1387,7 +1505,17 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.3)",
   },
   toggleButtonPressed: { opacity: 0.8 },
+  toggleButtonDisabled: { opacity: 0.4 },
   toggleButtonText: { fontWeight: "800", fontSize: 12, letterSpacing: 0.4 },
   toggleButtonTextOn: { color: "#0B0F14" },
   toggleButtonTextOff: { color: "rgba(255,255,255,0.75)" },
+  refreshControl: { flexDirection: "row", alignItems: "center", gap: 10 },
+  refreshValue: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  refreshValueText: { color: "white", fontWeight: "800" },
+  refreshHint: { color: "rgba(255,255,255,0.6)", fontWeight: "600" },
 });

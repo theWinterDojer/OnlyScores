@@ -9,7 +9,7 @@ export const providers: ProviderRegistry = {
   thesportsdb: theSportsDbProvider,
 };
 
-export const defaultProviderId = "mock";
+export const defaultProviderId = "thesportsdb";
 
 export const getProvider = (id: string = defaultProviderId) => {
   const provider = providers[id];

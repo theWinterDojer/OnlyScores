@@ -7,6 +7,7 @@ import {
   FlatList,
   Pressable,
   ActivityIndicator,
+  AppState,
 } from "react-native";
 import AppHeader from "./src/components/AppHeader";
 import { getProvider } from "./src/providers";
@@ -181,6 +182,8 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const appStateRef = useRef(AppState.currentState);
   const listContentStyle = useMemo(
     () => [
       styles.listContent,
@@ -249,13 +252,44 @@ export default function App() {
     };
   }, [fetchScores]);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
+  const startAutoRefresh = useCallback(() => {
+    if (autoRefreshRef.current) return;
+    autoRefreshRef.current = setInterval(() => {
       fetchScores();
     }, AUTO_REFRESH_INTERVAL_MS);
-
-    return () => clearInterval(intervalId);
   }, [fetchScores]);
+
+  const stopAutoRefresh = useCallback(() => {
+    if (!autoRefreshRef.current) return;
+    clearInterval(autoRefreshRef.current);
+    autoRefreshRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (appStateRef.current === "active") {
+      startAutoRefresh();
+    }
+
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const wasActive = appStateRef.current === "active";
+      appStateRef.current = nextState;
+
+      if (nextState === "active") {
+        startAutoRefresh();
+        if (!wasActive) {
+          fetchScores();
+        }
+        return;
+      }
+
+      stopAutoRefresh();
+    });
+
+    return () => {
+      stopAutoRefresh();
+      subscription.remove();
+    };
+  }, [fetchScores, startAutoRefresh, stopAutoRefresh]);
 
   const handleRetry = () => {
     if (isFetching) return;

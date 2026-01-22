@@ -147,7 +147,7 @@ Client:
 - [x] Create `Provider` interface in `src/providers/Provider.ts`.
 - [x] Add `MockProvider` with existing mock data in `src/providers/MockProvider.ts`.
 - [x] Replace inline mock data in `App.tsx` with `MockProvider` fetch call.
-- [ ] Add simple provider registry in `src/providers/index.ts`.
+- [x] Add simple provider registry in `src/providers/index.ts`.
 - [ ] Add `AsyncStorage` cache helper in `src/providers/cache.ts`.
 - [ ] Cache latest scores snapshot after provider fetch.
 - [ ] Hydrate cached scores on app start before network fetch.

@@ -172,5 +172,5 @@ Client:
 - [x] Use selected league/team ids when calling `getScores`.
 - [x] Implement TheSportsDB `getLeagues` and `getTeams` with team logos.
 - [x] Add settings UI with per-card notification toggles.
-- [ ] Implement notification subscription and event delivery flow.
+- [x] Implement notification subscription and event delivery flow.
 - [ ] Add explicit offline indicator with last updated timestamp context.

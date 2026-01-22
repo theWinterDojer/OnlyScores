@@ -12,8 +12,22 @@ import {
 } from "react-native";
 import AppHeader from "./src/components/AppHeader";
 import ScoreCardView from "./src/components/ScoreCardView";
+import {
+  buildNotificationEvents,
+  configureNotifications,
+  deliverNotificationEvents,
+  ensureNotificationPermissions,
+  fetchExpoPushToken,
+  getCachedPushToken,
+} from "./src/notifications/notifications";
 import { getProvider } from "./src/providers";
 import { readCache, writeCache } from "./src/providers/cache";
+import { submitDeviceSubscription } from "./src/providers/notifications";
+import {
+  DEFAULT_NOTIFICATION_PREFS,
+  NotificationPrefsByCard,
+  NotificationSettingKey,
+} from "./src/types/notifications";
 import type {
   ProviderGame,
   ProviderLeague,
@@ -31,18 +45,6 @@ const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
 type SelectionPreferences = {
   leagueIds: string[];
   teamIds: string[];
-};
-
-type NotificationSettingKey = "notifyStart" | "notifyScore" | "notifyFinal";
-
-type CardNotificationPrefs = Record<NotificationSettingKey, boolean>;
-
-type NotificationPrefsByCard = Record<string, CardNotificationPrefs>;
-
-const DEFAULT_NOTIFICATION_PREFS: CardNotificationPrefs = {
-  notifyStart: true,
-  notifyScore: true,
-  notifyFinal: true,
 };
 
 const formatScheduledTime = (startTime: string) => {
@@ -134,11 +136,16 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [notificationPrefs, setNotificationPrefs] =
     useState<NotificationPrefsByCard>({});
+  const [notificationPermissionGranted, setNotificationPermissionGranted] =
+    useState(false);
+  const [pushToken, setPushToken] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const cardOrderRef = useRef<string[] | null>(null);
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
+  const previousCardsRef = useRef<ScoreCard[]>([]);
+  const hasFetchedOnceRef = useRef(false);
   const listContentStyle = useMemo(
     () => [
       styles.listContent,
@@ -166,6 +173,14 @@ export default function App() {
   const selectedLeagueSet = useMemo(
     () => new Set(selectedLeagueIds),
     [selectedLeagueIds]
+  );
+  const hasNotificationsEnabled = useMemo(
+    () =>
+      cards.some((card) => {
+        const prefs = notificationPrefs[card.id] ?? DEFAULT_NOTIFICATION_PREFS;
+        return prefs.notifyStart || prefs.notifyScore || prefs.notifyFinal;
+      }),
+    [cards, notificationPrefs]
   );
 
   const handleToggleLeague = useCallback(
@@ -217,6 +232,21 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    void configureNotifications();
+  }, []);
+
+  useEffect(() => {
+    const hydratePushToken = async () => {
+      const cachedToken = await getCachedPushToken();
+      if (cachedToken && isMountedRef.current) {
+        setPushToken(cachedToken);
+      }
+    };
+
+    hydratePushToken();
+  }, []);
+
+  useEffect(() => {
     if (!selectionHydrated) return;
     const hydrateNotificationPrefs = async () => {
       try {
@@ -233,6 +263,63 @@ export default function App() {
 
     hydrateNotificationPrefs();
   }, [selectionHydrated]);
+
+  useEffect(() => {
+    let isActive = true;
+    const prepareNotifications = async () => {
+      if (!hasNotificationsEnabled) {
+        if (isActive) {
+          setNotificationPermissionGranted(false);
+        }
+        return;
+      }
+      const granted = await ensureNotificationPermissions();
+      if (!isActive) return;
+      setNotificationPermissionGranted(granted);
+      if (!granted || pushToken) return;
+      const token = await fetchExpoPushToken();
+      if (token && isActive) {
+        setPushToken(token);
+      }
+    };
+
+    prepareNotifications();
+
+    return () => {
+      isActive = false;
+    };
+  }, [hasNotificationsEnabled, pushToken]);
+
+  useEffect(() => {
+    if (!selectionHydrated || isOnboarding) return;
+    if (!notificationPermissionGranted || !pushToken) return;
+    if (!hasNotificationsEnabled) return;
+    const payload = {
+      expoPushToken: pushToken,
+      leagueIds: selectedLeagueIds,
+      teamIds: selectedTeamIds,
+      preferences: notificationPrefs,
+    };
+
+    const submitSubscription = async () => {
+      try {
+        await submitDeviceSubscription(payload);
+      } catch {
+        // Subscription sync failures should not block the UI.
+      }
+    };
+
+    submitSubscription();
+  }, [
+    selectionHydrated,
+    isOnboarding,
+    notificationPermissionGranted,
+    pushToken,
+    hasNotificationsEnabled,
+    selectedLeagueIds,
+    selectedTeamIds,
+    notificationPrefs,
+  ]);
 
   const persistCardOrder = useCallback(async (nextCards: ScoreCard[]) => {
     const order = nextCards.map((card) => card.id);
@@ -376,6 +463,16 @@ export default function App() {
         setCards(ordered);
         ensureNotificationPrefs(ordered);
       }
+      if (notificationPermissionGranted && hasFetchedOnceRef.current) {
+        const events = buildNotificationEvents(
+          previousCardsRef.current,
+          ordered,
+          notificationPrefs
+        );
+        void deliverNotificationEvents(events);
+      }
+      previousCardsRef.current = ordered;
+      hasFetchedOnceRef.current = true;
       try {
         await writeCache(SCORE_CACHE_KEY, ordered);
       } catch {
@@ -392,7 +489,13 @@ export default function App() {
       }
       isFetchingRef.current = false;
     }
-  }, [isOnboarding, selectedLeagueIds, selectedTeamIds]);
+  }, [
+    isOnboarding,
+    selectedLeagueIds,
+    selectedTeamIds,
+    notificationPermissionGranted,
+    notificationPrefs,
+  ]);
 
   useEffect(() => {
     if (!selectionHydrated || !isOnboarding || onboardingStep !== "leagues") {

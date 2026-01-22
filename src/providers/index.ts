@@ -1,15 +1,13 @@
 import { Provider } from "./Provider";
-import mockProvider from "./MockProvider";
-import theSportsDbProvider from "./TheSportsDBProvider";
+import backendProvider from "./BackendProvider";
 
 export type ProviderRegistry = Record<string, Provider>;
 
 export const providers: ProviderRegistry = {
-  mock: mockProvider,
-  thesportsdb: theSportsDbProvider,
+  backend: backendProvider,
 };
 
-export const defaultProviderId = "thesportsdb";
+export const defaultProviderId = "backend";
 
 export const getProvider = (id: string = defaultProviderId) => {
   const provider = providers[id];

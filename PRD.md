@@ -183,6 +183,6 @@ Client:
 - [x] Filter score cards by selected team ids when provided.
 - [x] Wire real Expo push permissions/token + backend event delivery; remove local alert fallback.
 - [x] Replace reorder buttons with drag-and-drop list and persist order.
-- [ ] Render team logos in score rows with fallback when missing.
+- [x] Render team logos in score rows with fallback when missing.
 - [ ] Add refresh interval setting (60-120 seconds) and persist user choice.
 - [ ] Support NFL week-based scoring windows instead of day-only filtering.

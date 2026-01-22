@@ -5,6 +5,8 @@ export type Game = {
   time: string; // e.g., "7:30 PM"
   awayTeam: string;
   homeTeam: string;
+  awayLogoUrl?: string;
+  homeLogoUrl?: string;
   awayScore?: number;
   homeScore?: number;
   status: GameStatus;

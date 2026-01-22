@@ -101,28 +101,42 @@ const getLatestCardUpdated = (cards: ScoreCard[]) => {
   return new Date(latest).toISOString();
 };
 
+type TeamDisplay = {
+  name: string;
+  logoUrl?: string;
+};
+
 const buildTeamLookup = (teams: ProviderTeam[]) =>
-  teams.reduce<Record<string, string>>((acc, team) => {
-    acc[team.id] = team.shortName || team.name;
+  teams.reduce<Record<string, TeamDisplay>>((acc, team) => {
+    acc[team.id] = {
+      name: team.shortName || team.name,
+      logoUrl: team.logoUrl,
+    };
     return acc;
   }, {});
 
 const normalizeCards = (
   cards: ProviderScoreCard[],
-  teamLookup: Record<string, string>
+  teamLookup: Record<string, TeamDisplay>
 ): ScoreCard[] =>
   cards.map((card) => ({
     id: card.id,
     title: card.title,
-    games: card.games.map((game) => ({
-      id: game.id,
-      time: formatGameTime(game),
-      awayTeam: teamLookup[game.awayTeamId] ?? game.awayTeamId,
-      homeTeam: teamLookup[game.homeTeamId] ?? game.homeTeamId,
-      awayScore: game.awayScore,
-      homeScore: game.homeScore,
-      status: game.status,
-    })),
+    games: card.games.map((game) => {
+      const awayTeam = teamLookup[game.awayTeamId];
+      const homeTeam = teamLookup[game.homeTeamId];
+      return {
+        id: game.id,
+        time: formatGameTime(game),
+        awayTeam: awayTeam?.name ?? game.awayTeamId,
+        homeTeam: homeTeam?.name ?? game.homeTeamId,
+        awayLogoUrl: awayTeam?.logoUrl,
+        homeLogoUrl: homeTeam?.logoUrl,
+        awayScore: game.awayScore,
+        homeScore: game.homeScore,
+        status: game.status,
+      };
+    }),
     lastUpdated: getCardLastUpdated(card.games),
   }));
 

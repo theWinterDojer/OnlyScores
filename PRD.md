@@ -170,7 +170,7 @@ Client:
 - [x] Wire `App.tsx` to consume `src/components` and `src/types/score.ts` (remove inline duplicates).
 - [x] Implement onboarding for league/team selection and persist selections.
 - [x] Use selected league/team ids when calling `getScores`.
-- [ ] Implement TheSportsDB `getLeagues` and `getTeams` with team logos.
+- [x] Implement TheSportsDB `getLeagues` and `getTeams` with team logos.
 - [ ] Add settings UI with per-card notification toggles.
 - [ ] Implement notification subscription and event delivery flow.
 - [ ] Add explicit offline indicator with last updated timestamp context.

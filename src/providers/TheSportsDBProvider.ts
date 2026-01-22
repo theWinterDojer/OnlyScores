@@ -29,6 +29,31 @@ type TheSportsDbEventsResponse = {
   events: TheSportsDbEvent[] | null;
 };
 
+type TheSportsDbLeaguesResponse = {
+  leagues: TheSportsDbLeague[] | null;
+};
+
+type TheSportsDbLeague = {
+  idLeague?: string;
+  strLeague?: string;
+  strSport?: string;
+};
+
+type TheSportsDbTeamsResponse = {
+  teams: TheSportsDbTeam[] | null;
+};
+
+type TheSportsDbTeam = {
+  idTeam?: string;
+  idLeague?: string;
+  strTeam?: string;
+  strTeamShort?: string;
+  strTeamAlternate?: string;
+  strTeamBadge?: string;
+  strTeamLogo?: string;
+  strTeamFanart1?: string;
+};
+
 type TheSportsDbEvent = {
   idEvent?: string;
   idLeague?: string;
@@ -44,6 +69,8 @@ type TheSportsDbEvent = {
   strHomeTeam?: string;
   strAwayTeam?: string;
 };
+
+const trimOrUndefined = (value?: string | null) => value?.trim() || undefined;
 
 const toIsoString = (value?: string | null) => {
   if (!value) return null;
@@ -169,13 +196,51 @@ const theSportsDbProvider: Provider<
   id: "thesportsdb",
   name: "TheSportsDB",
   async getLeagues(options?: ProviderFetchOptions) {
-    void options;
-    return [];
+    const response = await fetchJson<TheSportsDbLeaguesResponse>(
+      "all_leagues.php",
+      options
+    );
+    return (response.leagues ?? [])
+      .map((league) => {
+        const id = trimOrUndefined(league.idLeague);
+        const name = trimOrUndefined(league.strLeague);
+        const sport = trimOrUndefined(league.strSport);
+        if (!id || !name) return null;
+        return {
+          id,
+          name,
+          sport: sport ?? "Unknown",
+        };
+      })
+      .filter((league): league is ProviderLeague => Boolean(league));
   },
   async getTeams(leagueId: string, options?: ProviderFetchOptions) {
-    void leagueId;
-    void options;
-    return [];
+    const response = await fetchJson<TheSportsDbTeamsResponse>(
+      `lookup_all_teams.php?id=${leagueId}`,
+      options
+    );
+    return (response.teams ?? [])
+      .map((team) => {
+        const id = trimOrUndefined(team.idTeam);
+        const name = trimOrUndefined(team.strTeam);
+        if (!id || !name) return null;
+        const shortName =
+          trimOrUndefined(team.strTeamShort) ??
+          trimOrUndefined(team.strTeamAlternate) ??
+          name;
+        const logoUrl =
+          trimOrUndefined(team.strTeamBadge) ??
+          trimOrUndefined(team.strTeamLogo) ??
+          trimOrUndefined(team.strTeamFanart1);
+        return {
+          id,
+          leagueId: trimOrUndefined(team.idLeague) ?? leagueId,
+          name,
+          shortName,
+          logoUrl,
+        };
+      })
+      .filter((team): team is ProviderTeam => Boolean(team));
   },
   async getScores(request: ProviderScoresRequest, options?: ProviderFetchOptions) {
     const leagueIds = request.leagueIds ?? [];

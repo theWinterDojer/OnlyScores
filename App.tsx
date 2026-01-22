@@ -25,11 +25,24 @@ import type { ScoreCard } from "./src/types/score";
 const SCORE_CACHE_KEY = "scores:latest:ui";
 const CARD_ORDER_CACHE_KEY = "cards:order";
 const SELECTION_CACHE_KEY = "selection:preferences";
+const NOTIFICATION_PREFS_CACHE_KEY = "cards:notifications";
 const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
 
 type SelectionPreferences = {
   leagueIds: string[];
   teamIds: string[];
+};
+
+type NotificationSettingKey = "notifyStart" | "notifyScore" | "notifyFinal";
+
+type CardNotificationPrefs = Record<NotificationSettingKey, boolean>;
+
+type NotificationPrefsByCard = Record<string, CardNotificationPrefs>;
+
+const DEFAULT_NOTIFICATION_PREFS: CardNotificationPrefs = {
+  notifyStart: true,
+  notifyScore: true,
+  notifyFinal: true,
 };
 
 const formatScheduledTime = (startTime: string) => {
@@ -118,6 +131,9 @@ export default function App() {
   const [isLoadingLeagues, setIsLoadingLeagues] = useState(false);
   const [isLoadingTeams, setIsLoadingTeams] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [notificationPrefs, setNotificationPrefs] =
+    useState<NotificationPrefsByCard>({});
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const cardOrderRef = useRef<string[] | null>(null);
@@ -200,6 +216,24 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!selectionHydrated) return;
+    const hydrateNotificationPrefs = async () => {
+      try {
+        const cached = await readCache<NotificationPrefsByCard>(
+          NOTIFICATION_PREFS_CACHE_KEY
+        );
+        if (cached && isMountedRef.current) {
+          setNotificationPrefs(cached);
+        }
+      } catch {
+        // Ignore notification preference hydration failures.
+      }
+    };
+
+    hydrateNotificationPrefs();
+  }, [selectionHydrated]);
+
   const persistCardOrder = useCallback(async (nextCards: ScoreCard[]) => {
     const order = nextCards.map((card) => card.id);
     cardOrderRef.current = order;
@@ -209,6 +243,37 @@ export default function App() {
       // Card order persistence should not block UI updates.
     }
   }, []);
+
+  const persistNotificationPrefs = useCallback(
+    async (nextPrefs: NotificationPrefsByCard) => {
+      try {
+        await writeCache(NOTIFICATION_PREFS_CACHE_KEY, nextPrefs);
+      } catch {
+        // Notification preference persistence should not block UI updates.
+      }
+    },
+    []
+  );
+
+  const ensureNotificationPrefs = useCallback(
+    (nextCards: ScoreCard[]) => {
+      setNotificationPrefs((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        nextCards.forEach((card) => {
+          if (!next[card.id]) {
+            next[card.id] = { ...DEFAULT_NOTIFICATION_PREFS };
+            changed = true;
+          }
+        });
+        if (changed) {
+          void persistNotificationPrefs(next);
+        }
+        return changed ? next : prev;
+      });
+    },
+    [persistNotificationPrefs]
+  );
 
   const moveCard = useCallback((fromIndex: number, direction: -1 | 1) => {
     setCards((prev) => {
@@ -309,6 +374,7 @@ export default function App() {
       const ordered = applyCardOrder(normalized, cardOrderRef.current);
       if (isMountedRef.current) {
         setCards(ordered);
+        ensureNotificationPrefs(ordered);
       }
       try {
         await writeCache(SCORE_CACHE_KEY, ordered);
@@ -366,6 +432,7 @@ export default function App() {
         const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
         if (cached && isMountedRef.current) {
           setCards(applyCardOrder(cached, cardOrderRef.current));
+          ensureNotificationPrefs(cached);
         }
       } catch {
         // Ignore cache hydration failures.
@@ -452,6 +519,27 @@ export default function App() {
     if (isFetching) return;
     fetchScores();
   };
+
+  const handleOpenSettings = () => {
+    setIsSettingsOpen(true);
+  };
+
+  const handleCloseSettings = () => {
+    setIsSettingsOpen(false);
+  };
+
+  const handleToggleNotification = useCallback(
+    (cardId: string, key: NotificationSettingKey) => {
+      setNotificationPrefs((prev) => {
+        const current = prev[cardId] ?? DEFAULT_NOTIFICATION_PREFS;
+        const nextCard = { ...current, [key]: !current[key] };
+        const next = { ...prev, [cardId]: nextCard };
+        void persistNotificationPrefs(next);
+        return next;
+      });
+    },
+    [persistNotificationPrefs]
+  );
 
   const showSelectionLoading = !selectionHydrated;
   const showOnboarding = selectionHydrated && isOnboarding;
@@ -629,9 +717,120 @@ export default function App() {
     );
   }
 
+  if (isSettingsOpen) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <AppHeader
+          title="Settings"
+          subtitle="Notification preferences"
+          actionLabel="Done"
+          onActionPress={handleCloseSettings}
+        />
+        <ScrollView contentContainerStyle={styles.settingsContent}>
+          {cards.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No cards yet</Text>
+              <Text style={styles.emptyBody}>
+                Choose leagues or teams to enable notifications.
+              </Text>
+            </View>
+          ) : (
+            cards.map((card) => {
+              const prefs =
+                notificationPrefs[card.id] ?? DEFAULT_NOTIFICATION_PREFS;
+              return (
+                <View key={card.id} style={styles.settingsCard}>
+                  <Text style={styles.settingsCardTitle}>{card.title}</Text>
+                  <View style={styles.settingsToggleRow}>
+                    <Text style={styles.settingsToggleLabel}>Game start</Text>
+                    <Pressable
+                      onPress={() =>
+                        handleToggleNotification(card.id, "notifyStart")
+                      }
+                      style={({ pressed }) => [
+                        styles.toggleButton,
+                        prefs.notifyStart
+                          ? styles.toggleButtonOn
+                          : styles.toggleButtonOff,
+                        pressed ? styles.toggleButtonPressed : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.toggleButtonText,
+                          prefs.notifyStart
+                            ? styles.toggleButtonTextOn
+                            : styles.toggleButtonTextOff,
+                        ]}
+                      >
+                        {prefs.notifyStart ? "On" : "Off"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <View style={styles.settingsToggleRow}>
+                    <Text style={styles.settingsToggleLabel}>Score change</Text>
+                    <Pressable
+                      onPress={() =>
+                        handleToggleNotification(card.id, "notifyScore")
+                      }
+                      style={({ pressed }) => [
+                        styles.toggleButton,
+                        prefs.notifyScore
+                          ? styles.toggleButtonOn
+                          : styles.toggleButtonOff,
+                        pressed ? styles.toggleButtonPressed : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.toggleButtonText,
+                          prefs.notifyScore
+                            ? styles.toggleButtonTextOn
+                            : styles.toggleButtonTextOff,
+                        ]}
+                      >
+                        {prefs.notifyScore ? "On" : "Off"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <View style={styles.settingsToggleRow}>
+                    <Text style={styles.settingsToggleLabel}>Final</Text>
+                    <Pressable
+                      onPress={() =>
+                        handleToggleNotification(card.id, "notifyFinal")
+                      }
+                      style={({ pressed }) => [
+                        styles.toggleButton,
+                        prefs.notifyFinal
+                          ? styles.toggleButtonOn
+                          : styles.toggleButtonOff,
+                        pressed ? styles.toggleButtonPressed : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.toggleButtonText,
+                          prefs.notifyFinal
+                            ? styles.toggleButtonTextOn
+                            : styles.toggleButtonTextOff,
+                        ]}
+                      >
+                        {prefs.notifyFinal ? "On" : "Off"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.screen}>
-      <AppHeader />
+      <AppHeader actionLabel="Settings" onActionPress={handleOpenSettings} />
       {showLoadingState ? (
         <View style={styles.loadingState}>
           <ActivityIndicator size="large" color="white" />
@@ -839,4 +1038,38 @@ const styles = StyleSheet.create({
   },
   secondaryButtonPressed: { opacity: 0.8 },
   secondaryButtonText: { color: "white", fontWeight: "800" },
+
+  settingsContent: { padding: 16, gap: 16, paddingBottom: 32 },
+  settingsCard: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 14,
+    padding: 16,
+    gap: 12,
+  },
+  settingsCardTitle: { color: "white", fontSize: 18, fontWeight: "800" },
+  settingsToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  settingsToggleLabel: { color: "rgba(255,255,255,0.8)", fontWeight: "600" },
+  toggleButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  toggleButtonOn: {
+    backgroundColor: "white",
+    borderColor: "white",
+  },
+  toggleButtonOff: {
+    backgroundColor: "transparent",
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  toggleButtonPressed: { opacity: 0.8 },
+  toggleButtonText: { fontWeight: "800", fontSize: 12, letterSpacing: 0.4 },
+  toggleButtonTextOn: { color: "#0B0F14" },
+  toggleButtonTextOff: { color: "rgba(255,255,255,0.75)" },
 });

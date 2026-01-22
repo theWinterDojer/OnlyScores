@@ -171,6 +171,6 @@ Client:
 - [x] Implement onboarding for league/team selection and persist selections.
 - [x] Use selected league/team ids when calling `getScores`.
 - [x] Implement TheSportsDB `getLeagues` and `getTeams` with team logos.
-- [ ] Add settings UI with per-card notification toggles.
+- [x] Add settings UI with per-card notification toggles.
 - [ ] Implement notification subscription and event delivery flow.
 - [ ] Add explicit offline indicator with last updated timestamp context.

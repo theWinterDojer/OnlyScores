@@ -150,7 +150,7 @@ Client:
 - [x] Add simple provider registry in `src/providers/index.ts`.
 - [x] Add `AsyncStorage` cache helper in `src/providers/cache.ts`.
 - [x] Cache latest scores snapshot after provider fetch.
-- [ ] Hydrate cached scores on app start before network fetch.
+- [x] Hydrate cached scores on app start before network fetch.
 - [ ] Track and display last updated time on each card.
 - [ ] Add loading state UI for initial fetch.
 - [ ] Add empty state UI when no games exist.

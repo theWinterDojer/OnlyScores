@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -8,6 +8,13 @@ import {
   Pressable,
 } from "react-native";
 import AppHeader from "./src/components/AppHeader";
+import { getProvider } from "./src/providers";
+import { readCache, writeCache } from "./src/providers/cache";
+import type {
+  ProviderGame,
+  ProviderScoreCard,
+  ProviderTeam,
+} from "./src/types/provider";
 
 type GameStatus = "scheduled" | "live" | "final";
 
@@ -27,32 +34,47 @@ type ScoreCard = {
   games: Game[];
 };
 
-function makeMockCards(): ScoreCard[] {
-  const nbaGames: Game[] = Array.from({ length: 14 }).map((_, i) => ({
-    id: `nba-${i}`,
-    time: i % 3 === 0 ? "LIVE" : i % 3 === 1 ? "7:30 PM" : "FINAL",
-    awayTeam: ["Magic", "Celtics", "Lakers", "Heat"][i % 4],
-    homeTeam: ["Knicks", "Bulls", "Warriors", "Nuggets"][i % 4],
-    awayScore: i % 3 === 1 ? undefined : 80 + i,
-    homeScore: i % 3 === 1 ? undefined : 78 + i,
-    status: i % 3 === 0 ? "live" : i % 3 === 1 ? "scheduled" : "final",
-  }));
+const SCORE_CACHE_KEY = "scores:latest:ui";
 
-  const nflGames: Game[] = Array.from({ length: 6 }).map((_, i) => ({
-    id: `nfl-${i}`,
-    time: i % 2 === 0 ? "1:00 PM" : "FINAL",
-    awayTeam: ["Bucs", "Bills", "Eagles"][i % 3],
-    homeTeam: ["Saints", "Jets", "Cowboys"][i % 3],
-    awayScore: i % 2 === 0 ? undefined : 17 + i,
-    homeScore: i % 2 === 0 ? undefined : 14 + i,
-    status: i % 2 === 0 ? "scheduled" : "final",
-  }));
+const formatScheduledTime = (startTime: string) => {
+  const date = new Date(startTime);
+  if (Number.isNaN(date.getTime())) return "TBD";
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const period = hours >= 12 ? "PM" : "AM";
+  const normalizedHours = hours % 12 === 0 ? 12 : hours % 12;
+  return `${normalizedHours}:${minutes} ${period}`;
+};
 
-  return [
-    { id: "card-nba", title: "NBA", games: nbaGames },
-    { id: "card-nfl", title: "NFL", games: nflGames },
-  ];
-}
+const formatGameTime = (game: ProviderGame) => {
+  if (game.status === "live") return "LIVE";
+  if (game.status === "final") return "FINAL";
+  return formatScheduledTime(game.startTime);
+};
+
+const buildTeamLookup = (teams: ProviderTeam[]) =>
+  teams.reduce<Record<string, string>>((acc, team) => {
+    acc[team.id] = team.shortName || team.name;
+    return acc;
+  }, {});
+
+const normalizeCards = (
+  cards: ProviderScoreCard[],
+  teamLookup: Record<string, string>
+): ScoreCard[] =>
+  cards.map((card) => ({
+    id: card.id,
+    title: card.title,
+    games: card.games.map((game) => ({
+      id: game.id,
+      time: formatGameTime(game),
+      awayTeam: teamLookup[game.awayTeamId] ?? game.awayTeamId,
+      homeTeam: teamLookup[game.homeTeamId] ?? game.homeTeamId,
+      awayScore: game.awayScore,
+      homeScore: game.homeScore,
+      status: game.status,
+    })),
+  }));
 
 function StatusPill({ status }: { status: GameStatus }) {
   const label = status === "scheduled" ? "UPCOMING" : status.toUpperCase();
@@ -122,7 +144,55 @@ function ScoreCardView({ card }: { card: ScoreCard }) {
 }
 
 export default function App() {
-  const cards = useMemo(() => makeMockCards(), []);
+  const [cards, setCards] = useState<ScoreCard[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const hydrateAndFetch = async () => {
+      try {
+        const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
+        if (cached && isMounted) {
+          setCards(cached);
+        }
+      } catch {
+        // Ignore cache hydration failures.
+      }
+
+      try {
+        const provider = getProvider();
+        const providerCards = await provider.getScores({});
+        const leagueIds = Array.from(
+          new Set(providerCards.map((card) => card.leagueId))
+        );
+        const teams = (
+          await Promise.all(
+            leagueIds.map((leagueId) => provider.getTeams(leagueId))
+          )
+        ).flat();
+        const normalized = normalizeCards(
+          providerCards,
+          buildTeamLookup(teams)
+        );
+        if (isMounted) {
+          setCards(normalized);
+        }
+        try {
+          await writeCache(SCORE_CACHE_KEY, normalized);
+        } catch {
+          // Cache failures should not block score updates.
+        }
+      } catch {
+        // Ignore fetch failures for now.
+      }
+    };
+
+    hydrateAndFetch();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.screen}>

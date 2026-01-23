@@ -22,7 +22,7 @@ noise. Most sports apps prioritize content and engagement over speed.
 - [x] Offline-friendly with last successful scores cached.
 
 ## Success Metrics (v0)
-- [ ] Warm start to usable scores under 1.5 seconds.
+- [x] Warm start to usable scores under 1.5 seconds.
 - [ ] 99% of launches show cached scores even without network.
 - [ ] Notifications sent within 120 seconds of an event.
 - [ ] Fewer than 3 taps to reach any score list.
@@ -126,7 +126,7 @@ Client:
 - [x] Card reorder persists across app restarts.
 - [x] Works offline with last cached scores.
 - [x] Push notifications verified for at least one league.
-- [ ] Warm start to scores under 1.5 seconds.
+- [x] Warm start to scores under 1.5 seconds.
 
 ## Milestones
 - [ ] 1) Provider adapter + normalization.

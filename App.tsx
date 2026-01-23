@@ -494,6 +494,31 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let isActive = true;
+    const hydrateScoresCache = async () => {
+      try {
+        const cachedOrder = await readCache<string[]>(CARD_ORDER_CACHE_KEY);
+        if (cachedOrder && cachedOrder.length > 0) {
+          cardOrderRef.current = cachedOrder;
+        }
+        const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
+        if (cached && isActive && isMountedRef.current) {
+          setCards(applyCardOrder(cached, cardOrderRef.current));
+          ensureNotificationPrefs(cached);
+        }
+      } catch {
+        // Ignore cache hydration failures.
+      }
+    };
+
+    hydrateScoresCache();
+
+    return () => {
+      isActive = false;
+    };
+  }, [ensureNotificationPrefs]);
+
+  useEffect(() => {
     void configureNotifications();
   }, []);
 
@@ -1059,7 +1084,7 @@ export default function App() {
     [persistNotificationPrefs]
   );
 
-  const showSelectionLoading = !selectionHydrated;
+  const showSelectionLoading = !selectionHydrated && cards.length === 0;
   const showOnboarding = selectionHydrated && isOnboarding;
   const showLoadingState = cards.length === 0 && (isInitialLoading || isFetching);
   const showFullScreenError = cards.length === 0 && !!errorMessage && !isFetching;

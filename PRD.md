@@ -10,7 +10,7 @@ noise. Most sports apps prioritize content and engagement over speed.
 
 ## Target Users
 - [x] Sports fans who check scores multiple times a day.
-- [ ] Casual fans who only want the latest result or current score.
+- [x] Casual fans who only want the latest result or current score.
 - [ ] Power users who track multiple leagues and teams.
 
 ## Goals

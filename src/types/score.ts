@@ -2,6 +2,7 @@ export type GameStatus = "scheduled" | "live" | "final";
 
 export type Game = {
   id: string;
+  startTime?: string;
   time: string; // e.g., "7:30 PM"
   awayTeam: string;
   homeTeam: string;

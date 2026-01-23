@@ -39,13 +39,14 @@ import type {
   ProviderScoreCard,
   ProviderTeam,
 } from "./src/types/provider";
-import type { ScoreCard } from "./src/types/score";
+import type { Game, ScoreCard } from "./src/types/score";
 
 const SCORE_CACHE_KEY = "scores:latest:ui";
 const CARD_ORDER_CACHE_KEY = "cards:order";
 const SELECTION_CACHE_KEY = "selection:preferences";
 const NOTIFICATION_PREFS_CACHE_KEY = "cards:notifications";
 const REFRESH_INTERVAL_CACHE_KEY = "settings:refresh-interval-seconds";
+const LATEST_ONLY_CACHE_KEY = "settings:latest-only";
 const DEFAULT_REFRESH_INTERVAL_SECONDS = 60;
 const REFRESH_INTERVAL_MIN_SECONDS = 60;
 const REFRESH_INTERVAL_MAX_SECONDS = 120;
@@ -152,6 +153,7 @@ const normalizeCards = (
       const homeTeam = teamLookup[game.homeTeamId];
       return {
         id: game.id,
+        startTime: game.startTime,
         time: formatGameTime(game),
         awayTeam: awayTeam?.name ?? game.awayTeamId,
         homeTeam: homeTeam?.name ?? game.homeTeamId,
@@ -164,6 +166,56 @@ const normalizeCards = (
     }),
     lastUpdated: getCardLastUpdated(card.games),
   }));
+
+const getGameStartTimeValue = (game: Game) => {
+  if (!game.startTime) return null;
+  const time = new Date(game.startTime).getTime();
+  if (Number.isNaN(time)) return null;
+  return time;
+};
+
+const pickLatestGame = (games: Game[]) => {
+  let best = games[0];
+  let bestTime = getGameStartTimeValue(best);
+  for (let i = 1; i < games.length; i += 1) {
+    const candidate = games[i];
+    const time = getGameStartTimeValue(candidate);
+    if (time === null) {
+      continue;
+    }
+    if (bestTime === null || time > bestTime) {
+      best = candidate;
+      bestTime = time;
+    }
+  }
+  return best;
+};
+
+const pickEarliestGame = (games: Game[]) => {
+  let best = games[0];
+  let bestTime = getGameStartTimeValue(best);
+  for (let i = 1; i < games.length; i += 1) {
+    const candidate = games[i];
+    const time = getGameStartTimeValue(candidate);
+    if (time === null) {
+      continue;
+    }
+    if (bestTime === null || time < bestTime) {
+      best = candidate;
+      bestTime = time;
+    }
+  }
+  return best;
+};
+
+const selectCasualGames = (games: Game[]) => {
+  if (games.length <= 1) return games;
+  const liveGames = games.filter((game) => game.status === "live");
+  if (liveGames.length > 0) return [pickLatestGame(liveGames)];
+  const finalGames = games.filter((game) => game.status === "final");
+  if (finalGames.length > 0) return [pickLatestGame(finalGames)];
+  return [pickEarliestGame(games)];
+};
 
 const filterCardsByTeamIds = (
   cards: ProviderScoreCard[],
@@ -271,6 +323,7 @@ export default function App() {
   const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState(
     DEFAULT_REFRESH_INTERVAL_SECONDS
   );
+  const [showLatestOnly, setShowLatestOnly] = useState(false);
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const cardOrderRef = useRef<string[] | null>(null);
@@ -328,6 +381,13 @@ export default function App() {
     if (latestUpdated) return formatUpdatedLabel(latestUpdated);
     return "Just scores. Fast.";
   }, [isFetching, latestUpdated]);
+  const displayCards = useMemo(() => {
+    if (!showLatestOnly) return cards;
+    return cards.map((card) => ({
+      ...card,
+      games: selectCasualGames(card.games),
+    }));
+  }, [cards, showLatestOnly]);
 
   useEffect(() => {
     cardsRef.current = cards;
@@ -363,6 +423,22 @@ export default function App() {
     };
 
     hydrateRefreshInterval();
+  }, []);
+
+  useEffect(() => {
+    const hydrateLatestOnly = async () => {
+      try {
+        const cached = await readCache<boolean>(LATEST_ONLY_CACHE_KEY);
+        if (typeof cached !== "boolean") return;
+        if (isMountedRef.current) {
+          setShowLatestOnly(cached);
+        }
+      } catch {
+        // Ignore display preference hydration failures.
+      }
+    };
+
+    hydrateLatestOnly();
   }, []);
   const offlineBannerLabel = useMemo(
     () => `Offline - ${formatUpdatedLabel(latestUpdated)}`,
@@ -556,6 +632,14 @@ export default function App() {
     }
   }, []);
 
+  const persistLatestOnly = useCallback(async (nextValue: boolean) => {
+    try {
+      await writeCache(LATEST_ONLY_CACHE_KEY, nextValue);
+    } catch {
+      // Display preference persistence should not block UI updates.
+    }
+  }, []);
+
   const updateRefreshInterval = useCallback(
     (nextSeconds: number) => {
       const rounded =
@@ -570,6 +654,14 @@ export default function App() {
     },
     [persistRefreshInterval]
   );
+
+  const handleToggleLatestOnly = useCallback(() => {
+    setShowLatestOnly((prev) => {
+      const nextValue = !prev;
+      void persistLatestOnly(nextValue);
+      return nextValue;
+    });
+  }, [persistLatestOnly]);
 
   const handleCardLayout = useCallback(
     (id: string, event: LayoutChangeEvent) => {
@@ -1148,6 +1240,36 @@ export default function App() {
         />
         <ScrollView contentContainerStyle={styles.settingsContent}>
           <View style={styles.settingsCard}>
+            <Text style={styles.settingsCardTitle}>Display</Text>
+            <View style={styles.settingsToggleRow}>
+              <Text style={styles.settingsToggleLabel}>Latest only</Text>
+              <Pressable
+                onPress={handleToggleLatestOnly}
+                style={({ pressed }) => [
+                  styles.toggleButton,
+                  showLatestOnly
+                    ? styles.toggleButtonOn
+                    : styles.toggleButtonOff,
+                  pressed ? styles.toggleButtonPressed : null,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.toggleButtonText,
+                    showLatestOnly
+                      ? styles.toggleButtonTextOn
+                      : styles.toggleButtonTextOff,
+                  ]}
+                >
+                  {showLatestOnly ? "On" : "Off"}
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={styles.refreshHint}>
+              Show only the latest final or live game per card.
+            </Text>
+          </View>
+          <View style={styles.settingsCard}>
             <Text style={styles.settingsCardTitle}>Refresh interval</Text>
             <View style={styles.settingsToggleRow}>
               <Text style={styles.settingsToggleLabel}>Every</Text>
@@ -1331,7 +1453,7 @@ export default function App() {
         </View>
       ) : (
         <FlatList
-          data={cards}
+          data={displayCards}
           keyExtractor={(c) => c.id}
           contentContainerStyle={listContentStyle}
           renderItem={({ item }) => (

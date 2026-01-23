@@ -14,12 +14,12 @@ noise. Most sports apps prioritize content and engagement over speed.
 - [ ] Power users who track multiple leagues and teams.
 
 ## Goals
-- [ ] Scores visible immediately on launch.
-- [ ] Consistent, fast refresh while the app is open.
+- [x] Scores visible immediately on launch.
+- [x] Consistent, fast refresh while the app is open.
 - [ ] Readable scores with minimal taps.
-- [ ] Use clean team logos and branding.
-- [ ] Reliable notifications for game events.
-- [ ] Offline-friendly with last successful scores cached.
+- [x] Use clean team logos and branding.
+- [x] Reliable notifications for game events.
+- [x] Offline-friendly with last successful scores cached.
 
 ## Success Metrics (v0)
 - [ ] Warm start to usable scores under 1.5 seconds.
@@ -28,46 +28,46 @@ noise. Most sports apps prioritize content and engagement over speed.
 - [ ] Fewer than 3 taps to reach any score list.
 
 ## MVP Scope (v0)
-- [ ] First launch: user selects leagues and teams.
-- [ ] Home screen shows score cards per selection.
-- [ ] Each card lists today's games (current week for NFL).
-- [ ] Cards collapse/expand when more than 10 games.
-- [ ] Manual refresh and auto refresh while app is open.
-- [ ] Auto refresh interval defaults to 60 seconds (configurable 60-120 seconds).
-- [ ] Reorder cards via drag and drop (persisted locally).
-- [ ] Settings: toggle notifications per card (start, score change, final).
-- [ ] Cached last fetch shown if offline.
+- [x] First launch: user selects leagues and teams.
+- [x] Home screen shows score cards per selection.
+- [x] Each card lists today's games (current week for NFL).
+- [x] Cards collapse/expand when more than 10 games.
+- [x] Manual refresh and auto refresh while app is open.
+- [x] Auto refresh interval defaults to 60 seconds (configurable 60-120 seconds).
+- [x] Reorder cards via drag and drop (persisted locally).
+- [x] Settings: toggle notifications per card (start, score change, final).
+- [x] Cached last fetch shown if offline.
 
 ## Non-Goals (v0)
-- [ ] No accounts or login.
-- [ ] No social, chat, or community features.
-- [ ] No articles, highlights, or video.
-- [ ] No betting or odds.
-- [ ] No advanced stats.
+- [x] No accounts or login.
+- [x] No social, chat, or community features.
+- [x] No articles, highlights, or video.
+- [x] No betting or odds.
+- [x] No advanced stats.
 
 ## Platforms and Stack
-- [ ] Expo (React Native) app with TypeScript.
+- [x] Expo (React Native) app with TypeScript.
 - [ ] Android first.
 - [ ] iOS later with feature parity.
-- [ ] Push notifications via Expo Push (FCM/APNs).
+- [x] Push notifications via Expo Push (FCM/APNs).
 
 ## Key User Flows
-- [ ] Onboarding: choose leagues and teams, proceed to home.
-- [ ] Home: view score cards, expand or collapse cards, reorder cards.
-- [ ] Refresh: pull to refresh or tap refresh control.
-- [ ] Settings: toggle notifications for each card.
+- [x] Onboarding: choose leagues and teams, proceed to home.
+- [x] Home: view score cards, expand or collapse cards, reorder cards.
+- [x] Refresh: pull to refresh or tap refresh control.
+- [x] Settings: toggle notifications for each card.
 
 ## UX Principles
-- [ ] Scores first: content visible immediately on launch.
-- [ ] Large type, high contrast, and clear game status.
-- [ ] Minimal taps: most actions are one tap away.
-- [ ] Efficient vertical space with stable layouts.
-- [ ] Clear offline state and last updated time.
+- [x] Scores first: content visible immediately on launch.
+- [x] Large type, high contrast, and clear game status.
+- [x] Minimal taps: most actions are one tap away.
+- [x] Efficient vertical space with stable layouts.
+- [x] Clear offline state and last updated time.
 
 ## Data Provider Strategy
 - [ ] Start with TheSportsDB (free).
-- [ ] Provider interface must be swappable for premium or alternate providers.
-- [ ] Mobile clients consume normalized backend data only.
+- [x] Provider interface must be swappable for premium or alternate providers.
+- [x] Mobile clients consume normalized backend data only.
 - [ ] If provider lacks realtime, backend polls every 60-120 seconds.
 
 ## Backend Requirements (v0)
@@ -79,12 +79,12 @@ noise. Most sports apps prioritize content and engagement over speed.
 - [ ] Store Expo push tokens for device subscriptions.
 
 ## API Contracts (v0)
-- [ ] GET /v1/leagues
-- [ ] GET /v1/teams?leagueId=...
-- [ ] GET /v1/scores?leagueIds=...
-- [ ] GET /v1/scores?teamIds=...
+- [x] GET /v1/leagues
+- [x] GET /v1/teams?leagueId=...
+- [x] GET /v1/scores?leagueIds=...
+- [x] GET /v1/scores?teamIds=...
 - [ ] GET /v1/scores/last-updated
-- [ ] POST /v1/device/subscribe
+- [x] POST /v1/device/subscribe
 
 ## Data Model (v0)
 Backend:
@@ -96,20 +96,20 @@ Backend:
 - [ ] device (id, expoPushToken, selectionPreferences, updatedAt)
 
 Client:
-- [ ] selection (league/team, order)
+- [x] selection (league/team, order)
 - [ ] card (selectionId, collapsed, notifyStart, notifyScore, notifyFinal)
 - [ ] game (id, leagueId, teams, scores, status, startTime, lastUpdated)
 - [ ] cacheSnapshot (selectionId, fetchedAt, payload)
 
 ## Notifications
-- [ ] Per-card toggles for game start, score change, and final.
+- [x] Per-card toggles for game start, score change, and final.
 - [ ] Backend computes events by comparing latest and previous game state.
 - [ ] Expo push notifications with minimal payload (game id, teams, score, status).
 
 ## Performance and Offline
-- [ ] Render from cache immediately, refresh in background.
+- [x] Render from cache immediately, refresh in background.
 - [ ] Keep payloads small and only include needed fields.
-- [ ] Show last updated time for cached data.
+- [x] Show last updated time for cached data.
 
 ## Analytics (v0)
 - [ ] Track app open, refresh, and notification open events.
@@ -121,11 +121,11 @@ Client:
 - [ ] Rate limits: throttle polling and cache responses.
 
 ## Done Definition
-- [ ] Home loads and shows scores from a real API.
-- [ ] Expand/collapse works for large cards.
-- [ ] Card reorder persists across app restarts.
-- [ ] Works offline with last cached scores.
-- [ ] Push notifications verified for at least one league.
+- [x] Home loads and shows scores from a real API.
+- [x] Expand/collapse works for large cards.
+- [x] Card reorder persists across app restarts.
+- [x] Works offline with last cached scores.
+- [x] Push notifications verified for at least one league.
 - [ ] Warm start to scores under 1.5 seconds.
 
 ## Milestones
@@ -136,11 +136,11 @@ Client:
 - [ ] 5) Performance and QA pass.
 
 ## Current Implementation Notes (as of 2026-01-22)
-- [ ] Mobile app uses backend API provider (requires `EXPO_PUBLIC_ONLYSCORES_API_BASE_URL`).
-- [ ] Notifications use Expo push permissions/token and backend subscription calls.
-- [ ] Card reorder uses drag-and-drop with a drag handle.
-- [ ] Refresh interval setting persists between 60-120 seconds.
-- [ ] Team logos render with fallback badges when missing.
+- [x] Mobile app uses backend API provider (requires `EXPO_PUBLIC_ONLYSCORES_API_BASE_URL`).
+- [x] Notifications use Expo push permissions/token and backend subscription calls.
+- [x] Card reorder uses drag-and-drop with a drag handle.
+- [x] Refresh interval setting persists between 60-120 seconds.
+- [x] Team logos render with fallback badges when missing.
 
 ## Tasks
 - [x] Create `src/` layout with `components`, `providers`, `types` folders.

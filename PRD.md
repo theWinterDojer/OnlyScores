@@ -47,7 +47,7 @@ noise. Most sports apps prioritize content and engagement over speed.
 
 ## Platforms and Stack
 - [x] Expo (React Native) app with TypeScript.
-- [ ] Android first.
+- [x] Android first.
 - [ ] iOS later with feature parity.
 - [x] Push notifications via Expo Push (FCM/APNs).
 

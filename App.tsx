@@ -1350,17 +1350,30 @@ export default function App() {
           )}
           <View style={styles.onboardingFooter}>
             {isLeagueStep ? (
-              <Pressable
-                onPress={handleStartTeams}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  !canContinue ? styles.primaryButtonDisabled : null,
-                  pressed && canContinue ? styles.primaryButtonPressed : null,
-                ]}
-                disabled={!canContinue}
-              >
-                <Text style={styles.primaryButtonText}>Continue</Text>
-              </Pressable>
+              <View style={styles.onboardingFooterRow}>
+                <Pressable
+                  onPress={handleFinishOnboarding}
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    !canContinue ? styles.primaryButtonDisabled : null,
+                    pressed && canContinue ? styles.primaryButtonPressed : null,
+                  ]}
+                  disabled={!canContinue}
+                >
+                  <Text style={styles.primaryButtonText}>View scores</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleStartTeams}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    pressed && canContinue ? styles.secondaryButtonPressed : null,
+                    !canContinue ? styles.toggleButtonDisabled : null,
+                  ]}
+                  disabled={!canContinue}
+                >
+                  <Text style={styles.secondaryButtonText}>Add teams</Text>
+                </Pressable>
+              </View>
             ) : (
               <View style={styles.onboardingFooterRow}>
                 <Pressable

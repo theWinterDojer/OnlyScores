@@ -83,3 +83,6 @@ ios/build/
 # Generated native folders
 /ios
 /android
+
+# misc
+/scripts

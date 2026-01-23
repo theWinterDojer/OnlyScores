@@ -44,3 +44,22 @@ export const fetchExpoPushToken = async () => {
     return null;
   }
 };
+
+export const sendLocalNotification = async (
+  title: string,
+  body: string,
+  data?: Record<string, string>
+) => {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data,
+      },
+      trigger: null,
+    });
+  } catch {
+    // Ignore notification failures to keep the UI responsive.
+  }
+};

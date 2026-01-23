@@ -23,8 +23,8 @@ noise. Most sports apps prioritize content and engagement over speed.
 
 ## Success Metrics (v0)
 - [x] Warm start to usable scores under 1.5 seconds.
-- [ ] 99% of launches show cached scores even without network.
-- [ ] Notifications sent within 120 seconds of an event.
+- [x] 99% of launches show cached scores even without network.
+- [x] Notifications sent within 120 seconds of an event.
 - [ ] Fewer than 3 taps to reach any score list.
 
 ## MVP Scope (v0)

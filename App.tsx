@@ -23,6 +23,7 @@ import {
   ensureNotificationPermissions,
   fetchExpoPushToken,
   getCachedPushToken,
+  sendLocalNotification,
 } from "./src/notifications/notifications";
 import { getProvider } from "./src/providers";
 import { readCache, writeCache } from "./src/providers/cache";
@@ -115,6 +116,85 @@ const getLatestCardUpdated = (cards: ScoreCard[]) => {
   }, null);
   if (latest === null) return undefined;
   return new Date(latest).toISOString();
+};
+
+type NotificationEvent = {
+  title: string;
+  body: string;
+  data: Record<string, string>;
+};
+
+const formatScoreValue = (value?: number) =>
+  typeof value === "number" ? `${value}` : "-";
+
+const formatScoreLine = (game: Game) =>
+  `${game.awayTeam} ${formatScoreValue(game.awayScore)} - ${game.homeTeam} ${formatScoreValue(
+    game.homeScore
+  )}`;
+
+const resolveNotificationKey = (
+  previous: Game,
+  current: Game
+): NotificationSettingKey | null => {
+  if (previous.status !== "final" && current.status === "final") {
+    return "notifyFinal";
+  }
+  if (previous.status === "scheduled" && current.status === "live") {
+    return "notifyStart";
+  }
+  const scoreChanged =
+    previous.homeScore !== current.homeScore ||
+    previous.awayScore !== current.awayScore;
+  if (current.status === "live" && scoreChanged) {
+    return "notifyScore";
+  }
+  return null;
+};
+
+const buildNotificationEvents = (
+  previous: ScoreCard[],
+  current: ScoreCard[],
+  prefsByCard: NotificationPrefsByCard
+) => {
+  const previousByGameId = new Map<string, Game>();
+  previous.forEach((card) => {
+    card.games.forEach((game) => {
+      previousByGameId.set(game.id, game);
+    });
+  });
+
+  const events: NotificationEvent[] = [];
+  current.forEach((card) => {
+    const prefs = prefsByCard[card.id] ?? DEFAULT_NOTIFICATION_PREFS;
+    card.games.forEach((game) => {
+      const previousGame = previousByGameId.get(game.id);
+      if (!previousGame) return;
+      const key = resolveNotificationKey(previousGame, game);
+      if (!key || !prefs[key]) return;
+      const label =
+        key === "notifyFinal"
+          ? "Final"
+          : key === "notifyStart"
+            ? "Game Started"
+            : "Score Update";
+      const title = `${card.title} • ${label}`;
+      const body =
+        key === "notifyStart"
+          ? `${game.awayTeam} at ${game.homeTeam}`
+          : formatScoreLine(game);
+      events.push({
+        title,
+        body,
+        data: {
+          cardId: card.id,
+          gameId: game.id,
+          type: key,
+        },
+      });
+    });
+  });
+
+  return events;
 };
 
 const isNflLeague = (league: ProviderLeague) => {
@@ -328,6 +408,8 @@ export default function App() {
   const isFetchingRef = useRef(false);
   const cardOrderRef = useRef<string[] | null>(null);
   const cardsRef = useRef<ScoreCard[]>([]);
+  const notificationBaselineRef = useRef<ScoreCard[] | null>(null);
+  const hasNotificationBaselineRef = useRef(false);
   const dragTranslateY = useRef(new Animated.Value(0)).current;
   const dragStartYRef = useRef(0);
   const draggingIdRef = useRef<string | null>(null);
@@ -392,6 +474,11 @@ export default function App() {
   useEffect(() => {
     cardsRef.current = cards;
   }, [cards]);
+
+  useEffect(() => {
+    notificationBaselineRef.current = null;
+    hasNotificationBaselineRef.current = false;
+  }, [selectedLeagueIds, selectedTeamIds]);
 
   useEffect(() => {
     if (
@@ -890,6 +977,24 @@ export default function App() {
       ).flat();
       const normalized = normalizeCards(filteredCards, buildTeamLookup(teams));
       const ordered = applyCardOrder(normalized, cardOrderRef.current);
+      const previousCards = notificationBaselineRef.current;
+      if (
+        previousCards &&
+        hasNotificationBaselineRef.current &&
+        notificationPermissionGranted &&
+        hasNotificationsEnabled
+      ) {
+        const events = buildNotificationEvents(
+          previousCards,
+          ordered,
+          notificationPrefs
+        );
+        events.forEach((event) => {
+          void sendLocalNotification(event.title, event.body, event.data);
+        });
+      }
+      notificationBaselineRef.current = ordered;
+      hasNotificationBaselineRef.current = true;
       if (isMountedRef.current) {
         setCards(ordered);
         setIsOffline(false);
@@ -905,6 +1010,19 @@ export default function App() {
         setErrorMessage("Unable to load scores. Check your connection.");
         setIsOffline(true);
       }
+      try {
+        const cachedOrder = await readCache<string[]>(CARD_ORDER_CACHE_KEY);
+        if (cachedOrder && cachedOrder.length > 0) {
+          cardOrderRef.current = cachedOrder;
+        }
+        const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
+        if (cached && isMountedRef.current) {
+          setCards(applyCardOrder(cached, cardOrderRef.current));
+          ensureNotificationPrefs(cached);
+        }
+      } catch {
+        // Ignore cache fallback failures.
+      }
     } finally {
       if (isMountedRef.current) {
         setIsInitialLoading(false);
@@ -912,7 +1030,16 @@ export default function App() {
       }
       isFetchingRef.current = false;
     }
-  }, [apiBaseMissing, isOnboarding, selectedLeagueIds, selectedTeamIds, leagues]);
+  }, [
+    apiBaseMissing,
+    isOnboarding,
+    selectedLeagueIds,
+    selectedTeamIds,
+    leagues,
+    hasNotificationsEnabled,
+    notificationPermissionGranted,
+    notificationPrefs,
+  ]);
 
   useEffect(() => {
     if (!selectionHydrated || !isOnboarding || onboardingStep !== "leagues") {

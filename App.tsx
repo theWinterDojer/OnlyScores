@@ -1030,6 +1030,14 @@ export default function App() {
     setIsSettingsOpen(false);
   };
 
+  const handleEditSelections = useCallback(() => {
+    setOnboardingError(null);
+    setIsSettingsOpen(false);
+    setIsOnboarding(true);
+    setOnboardingStep("leagues");
+    setIsInitialLoading(true);
+  }, []);
+
   const handleDecreaseRefresh = useCallback(() => {
     updateRefreshInterval(refreshIntervalSeconds - REFRESH_INTERVAL_STEP_SECONDS);
   }, [refreshIntervalSeconds, updateRefreshInterval]);
@@ -1230,6 +1238,12 @@ export default function App() {
   }
 
   if (isSettingsOpen) {
+    const leagueCountLabel = `${selectedLeagueIds.length} league${
+      selectedLeagueIds.length === 1 ? "" : "s"
+    }`;
+    const teamCountLabel = `${selectedTeamIds.length} team${
+      selectedTeamIds.length === 1 ? "" : "s"
+    }`;
     return (
       <SafeAreaView style={styles.screen}>
         <AppHeader
@@ -1239,6 +1253,23 @@ export default function App() {
           onActionPress={handleCloseSettings}
         />
         <ScrollView contentContainerStyle={styles.settingsContent}>
+          <View style={styles.settingsCard}>
+            <Text style={styles.settingsCardTitle}>Selections</Text>
+            <Text style={styles.settingsSummaryText}>
+              {leagueCountLabel} selected, {teamCountLabel} tracked.
+            </Text>
+            <Pressable
+              onPress={handleEditSelections}
+              style={({ pressed }) => [
+                styles.settingsActionButton,
+                pressed ? styles.settingsActionButtonPressed : null,
+              ]}
+            >
+              <Text style={styles.settingsActionButtonText}>
+                Edit leagues & teams
+              </Text>
+            </Pressable>
+          </View>
           <View style={styles.settingsCard}>
             <Text style={styles.settingsCardTitle}>Display</Text>
             <View style={styles.settingsToggleRow}>
@@ -1689,6 +1720,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   settingsCardTitle: { color: "white", fontSize: 18, fontWeight: "800" },
+  settingsSummaryText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  settingsActionButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "white",
+  },
+  settingsActionButtonPressed: { opacity: 0.85 },
+  settingsActionButtonText: { color: "#0B0F14", fontWeight: "800" },
   settingsToggleRow: {
     flexDirection: "row",
     alignItems: "center",

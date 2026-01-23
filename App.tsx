@@ -323,6 +323,11 @@ export default function App() {
     [cards, notificationPrefs]
   );
   const latestUpdated = useMemo(() => getLatestCardUpdated(cards), [cards]);
+  const homeSubtitle = useMemo(() => {
+    if (isFetching) return "Refreshing...";
+    if (latestUpdated) return formatUpdatedLabel(latestUpdated);
+    return "Just scores. Fast.";
+  }, [isFetching, latestUpdated]);
 
   useEffect(() => {
     cardsRef.current = cards;
@@ -1294,7 +1299,14 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <AppHeader actionLabel="Settings" onActionPress={handleOpenSettings} />
+      <AppHeader
+        subtitle={homeSubtitle}
+        secondaryActionLabel={isFetching ? "Refreshing" : "Refresh"}
+        onSecondaryActionPress={handleRetry}
+        secondaryActionDisabled={isFetching}
+        actionLabel="Settings"
+        onActionPress={handleOpenSettings}
+      />
       {showLoadingState ? (
         <View style={styles.loadingState}>
           <ActivityIndicator size="large" color="white" />

@@ -9,7 +9,7 @@ Fans want scores and game status quickly, without digging through feeds or
 noise. Most sports apps prioritize content and engagement over speed.
 
 ## Target Users
-- [ ] Sports fans who check scores multiple times a day.
+- [x] Sports fans who check scores multiple times a day.
 - [ ] Casual fans who only want the latest result or current score.
 - [ ] Power users who track multiple leagues and teams.
 

@@ -19,46 +19,46 @@ export default function GameRow({ game }: GameRowProps) {
     <View style={styles.gameRow}>
       <View style={styles.gameLeft}>
         <View style={styles.teamLine}>
-          {game.awayLogoUrl ? (
-            <Image
-              source={{ uri: game.awayLogoUrl }}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          ) : (
-            <View style={styles.logoFallback}>
-              <Text style={styles.logoFallbackText}>
-                {getLogoFallback(game.awayTeam)}
-              </Text>
-            </View>
-          )}
-          <View style={styles.teamTextRow}>
+          <View style={styles.teamInfo}>
+            {game.awayLogoUrl ? (
+              <Image
+                source={{ uri: game.awayLogoUrl }}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.logoFallback}>
+                <Text style={styles.logoFallbackText}>
+                  {getLogoFallback(game.awayTeam)}
+                </Text>
+              </View>
+            )}
             <Text style={styles.teamName}>{game.awayTeam}</Text>
-            {showScores ? (
-              <Text style={styles.score}>{game.awayScore ?? "-"}</Text>
-            ) : null}
           </View>
+          <Text style={styles.score}>
+            {showScores ? game.awayScore ?? "-" : "-"}
+          </Text>
         </View>
         <View style={styles.teamLine}>
-          {game.homeLogoUrl ? (
-            <Image
-              source={{ uri: game.homeLogoUrl }}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          ) : (
-            <View style={styles.logoFallback}>
-              <Text style={styles.logoFallbackText}>
-                {getLogoFallback(game.homeTeam)}
-              </Text>
-            </View>
-          )}
-          <View style={styles.teamTextRow}>
+          <View style={styles.teamInfo}>
+            {game.homeLogoUrl ? (
+              <Image
+                source={{ uri: game.homeLogoUrl }}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.logoFallback}>
+                <Text style={styles.logoFallbackText}>
+                  {getLogoFallback(game.homeTeam)}
+                </Text>
+              </View>
+            )}
             <Text style={styles.teamName}>{game.homeTeam}</Text>
-            {showScores ? (
-              <Text style={styles.score}>{game.homeScore ?? "-"}</Text>
-            ) : null}
           </View>
+          <Text style={styles.score}>
+            {showScores ? game.homeScore ?? "-" : "-"}
+          </Text>
         </View>
       </View>
 
@@ -82,11 +82,14 @@ const styles = StyleSheet.create({
   teamLine: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    justifyContent: "space-between",
+    gap: 12,
   },
-  teamTextRow: {
+  teamInfo: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
   },
   teamName: {
     fontWeight: "700",
@@ -97,9 +100,11 @@ const styles = StyleSheet.create({
   score: {
     fontWeight: "800",
     color: "white",
-    marginLeft: 8,
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 18,
+    lineHeight: 22,
+    minWidth: 28,
+    textAlign: "right",
+    fontVariant: ["tabular-nums"],
   },
   logo: { width: 22, height: 22 },
   logoFallback: {

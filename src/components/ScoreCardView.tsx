@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ViewProps } from "react-native";
 
@@ -8,6 +8,8 @@ import { ScoreCard } from "../types/score";
 type ScoreCardViewProps = {
   card: ScoreCard;
   dragHandleProps?: ViewProps;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
 };
 
 const formatUpdatedLabel = (timestamp?: string) => {
@@ -24,9 +26,9 @@ const formatUpdatedLabel = (timestamp?: string) => {
 export default function ScoreCardView({
   card,
   dragHandleProps,
+  expanded = false,
+  onToggleExpanded,
 }: ScoreCardViewProps) {
-  const [expanded, setExpanded] = useState(false);
-
   const visibleGames = useMemo(() => {
     if (expanded) return card.games;
     return card.games.slice(0, 10);
@@ -46,7 +48,7 @@ export default function ScoreCardView({
 
         <View style={styles.cardActions}>
           {overflow ? (
-            <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={10}>
+            <Pressable onPress={onToggleExpanded} hitSlop={10}>
               <Text style={styles.linkText}>
                 {expanded
                   ? "Show less"

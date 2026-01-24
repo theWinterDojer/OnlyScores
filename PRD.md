@@ -197,8 +197,8 @@ Client:
 - [x] Implement selection-scoped cache snapshots (selectionId + fetchedAt) for hydration.
 - [x] Add analytics tracking for app open, refresh, and notification open events (no PII).
 - [x] Decide on `/v1/scores/last-updated` usage: wire into UI or remove from contract.
-- [ ] Pass explicit date for non-NFL score requests to guarantee "today" behavior.
-- [ ] Persist per-card collapse state or remove it from the client data model.
+- [x] Pass explicit date for non-NFL score requests to guarantee "today" behavior.
+- [x] Persist per-card collapse state or remove it from the client data model.
 - [ ] Add warm-start timing instrumentation to validate the 1.5s metric.
 - [ ] Align notification strategy: remove client-side local scheduling or document hybrid model.
 - [ ] Document or remove the "Latest only" display toggle in PRD scope and data model.

@@ -48,6 +48,7 @@ import type { Game, ScoreCard } from "./src/types/score";
 
 const SCORE_SNAPSHOT_CACHE_KEY = "scores:snapshots";
 const CARD_ORDER_CACHE_KEY = "cards:order";
+const CARD_EXPANSION_CACHE_KEY = "cards:expanded";
 const SELECTION_CACHE_KEY = "selection:preferences";
 const NOTIFICATION_PREFS_CACHE_KEY = "cards:notifications";
 const REFRESH_INTERVAL_CACHE_KEY = "settings:refresh-interval-seconds";
@@ -74,6 +75,7 @@ type ScoresCacheSnapshot = {
 type ScoresCacheStore = Record<string, ScoresCacheSnapshot>;
 
 type RefreshSource = "initial" | "manual" | "auto" | "app_active";
+type CardExpansionState = Record<string, boolean>;
 
 const normalizeSelectionIds = (ids: string[]) =>
   ids
@@ -377,6 +379,8 @@ type DraggableScoreCardProps = {
   onDragMove: (dy: number) => void;
   onDragEnd: () => void;
   onLayout: (id: string, event: LayoutChangeEvent) => void;
+  expanded: boolean;
+  onToggleExpanded: () => void;
 };
 
 function DraggableScoreCard({
@@ -387,6 +391,8 @@ function DraggableScoreCard({
   onDragMove,
   onDragEnd,
   onLayout,
+  expanded,
+  onToggleExpanded,
 }: DraggableScoreCardProps) {
   const panResponder = useMemo(
     () =>
@@ -410,7 +416,12 @@ function DraggableScoreCard({
         isDragging ? { transform: [{ translateY: dragTranslation }] } : null,
       ]}
     >
-      <ScoreCardView card={card} dragHandleProps={panResponder.panHandlers} />
+      <ScoreCardView
+        card={card}
+        dragHandleProps={panResponder.panHandlers}
+        expanded={expanded}
+        onToggleExpanded={onToggleExpanded}
+      />
     </Animated.View>
   );
 }
@@ -447,6 +458,9 @@ export default function App() {
     DEFAULT_REFRESH_INTERVAL_SECONDS
   );
   const [showLatestOnly, setShowLatestOnly] = useState(false);
+  const [cardExpansionById, setCardExpansionById] = useState<CardExpansionState>(
+    {}
+  );
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const cardOrderRef = useRef<string[] | null>(null);
@@ -599,6 +613,23 @@ export default function App() {
     };
 
     hydrateLatestOnly();
+  }, []);
+
+  useEffect(() => {
+    const hydrateCardExpansion = async () => {
+      try {
+        const cached = await readCache<CardExpansionState>(
+          CARD_EXPANSION_CACHE_KEY
+        );
+        if (cached && isMountedRef.current) {
+          setCardExpansionById(cached);
+        }
+      } catch {
+        // Ignore card expansion hydration failures.
+      }
+    };
+
+    hydrateCardExpansion();
   }, []);
   const offlineBannerLabel = useMemo(
     () => `Offline - ${formatUpdatedLabel(latestUpdated)}`,
@@ -821,6 +852,17 @@ export default function App() {
     }
   }, []);
 
+  const persistCardExpansion = useCallback(
+    async (nextValue: CardExpansionState) => {
+      try {
+        await writeCache(CARD_EXPANSION_CACHE_KEY, nextValue);
+      } catch {
+        // Card expansion persistence should not block UI updates.
+      }
+    },
+    []
+  );
+
   const updateRefreshInterval = useCallback(
     (nextSeconds: number) => {
       const rounded =
@@ -843,6 +885,17 @@ export default function App() {
       return nextValue;
     });
   }, [persistLatestOnly]);
+
+  const handleToggleCardExpanded = useCallback(
+    (id: string) => {
+      setCardExpansionById((prev) => {
+        const next = { ...prev, [id]: !prev[id] };
+        void persistCardExpansion(next);
+        return next;
+      });
+    },
+    [persistCardExpansion]
+  );
 
   const handleCardLayout = useCallback(
     (id: string, event: LayoutChangeEvent) => {
@@ -1759,6 +1812,8 @@ export default function App() {
               onDragMove={handleDragMove}
               onDragEnd={handleDragEnd}
               onLayout={handleCardLayout}
+              expanded={Boolean(cardExpansionById[item.id])}
+              onToggleExpanded={() => handleToggleCardExpanded(item.id)}
             />
           )}
           refreshing={isFetching}

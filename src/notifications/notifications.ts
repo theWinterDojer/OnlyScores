@@ -5,6 +5,23 @@ import { readCache, writeCache } from "../providers/cache";
 
 const PUSH_TOKEN_CACHE_KEY = "notifications:deviceToken";
 
+export type NotificationOpenData = {
+  id: string;
+  type?: string;
+};
+
+const buildNotificationOpenData = (
+  response: Notifications.NotificationResponse | null
+): NotificationOpenData | null => {
+  if (!response) return null;
+  const data = response.notification.request.content.data ?? {};
+  const rawType = (data as Record<string, unknown>).type;
+  return {
+    id: response.notification.request.identifier,
+    type: typeof rawType === "string" ? rawType : undefined,
+  };
+};
+
 export const configureNotifications = async () => {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -61,5 +78,23 @@ export const sendLocalNotification = async (
     });
   } catch {
     // Ignore notification failures to keep the UI responsive.
+  }
+};
+
+export const addNotificationOpenListener = (
+  handler: (data: NotificationOpenData) => void
+) =>
+  Notifications.addNotificationResponseReceivedListener((response) => {
+    const data = buildNotificationOpenData(response);
+    if (!data) return;
+    handler(data);
+  });
+
+export const getLastNotificationOpen = async () => {
+  try {
+    const response = await Notifications.getLastNotificationResponseAsync();
+    return buildNotificationOpenData(response);
+  } catch {
+    return null;
   }
 };

@@ -5,6 +5,7 @@ export const backendContract = {
     scores: "/v1/scores",
     scoresLastUpdated: "/v1/scores/last-updated",
     deviceSubscribe: "/v1/device/subscribe",
+    analyticsEvents: "/v1/analytics/events",
   },
   queryParams: {
     teams: ["leagueId"] as const,

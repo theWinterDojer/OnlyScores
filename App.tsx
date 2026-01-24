@@ -19,12 +19,15 @@ import type { LayoutChangeEvent } from "react-native";
 import AppHeader from "./src/components/AppHeader";
 import ScoreCardView from "./src/components/ScoreCardView";
 import {
+  addNotificationOpenListener,
   configureNotifications,
   ensureNotificationPermissions,
   fetchExpoPushToken,
   getCachedPushToken,
+  getLastNotificationOpen,
   sendLocalNotification,
 } from "./src/notifications/notifications";
+import { trackAnalyticsEvent } from "./src/providers/analytics";
 import { getProvider } from "./src/providers";
 import { readCache, writeCache } from "./src/providers/cache";
 import { submitDeviceSubscription } from "./src/providers/notifications";
@@ -33,6 +36,7 @@ import {
   NotificationPrefsByCard,
   NotificationSettingKey,
 } from "./src/types/notifications";
+import type { NotificationOpenData } from "./src/notifications/notifications";
 import type { ProviderScoresRequest } from "./src/providers/Provider";
 import type {
   ProviderGame,
@@ -68,6 +72,8 @@ type ScoresCacheSnapshot = {
 };
 
 type ScoresCacheStore = Record<string, ScoresCacheSnapshot>;
+
+type RefreshSource = "initial" | "manual" | "auto" | "app_active";
 
 const normalizeSelectionIds = (ids: string[]) =>
   ids
@@ -447,6 +453,7 @@ export default function App() {
   const cardsRef = useRef<ScoreCard[]>([]);
   const notificationBaselineRef = useRef<ScoreCard[] | null>(null);
   const hasNotificationBaselineRef = useRef(false);
+  const lastNotificationIdRef = useRef<string | null>(null);
   const dragTranslateY = useRef(new Animated.Value(0)).current;
   const dragStartYRef = useRef(0);
   const draggingIdRef = useRef<string | null>(null);
@@ -510,6 +517,31 @@ export default function App() {
       games: selectCasualGames(card.games),
     }));
   }, [cards, showLatestOnly]);
+
+  const trackAppOpen = useCallback((source: "cold_start" | "resume") => {
+    void trackAnalyticsEvent("app_open", { source });
+  }, []);
+
+  const trackRefresh = useCallback((source: RefreshSource) => {
+    void trackAnalyticsEvent("refresh", { source });
+  }, []);
+
+  const trackNotificationOpen = useCallback(
+    (data: NotificationOpenData) => {
+      if (data.id === lastNotificationIdRef.current) return;
+      lastNotificationIdRef.current = data.id;
+      const metadata: Record<string, string> = {};
+      if (data.type) {
+        metadata.type = data.type;
+      }
+      void trackAnalyticsEvent("notification_open", metadata);
+    },
+    []
+  );
+
+  useEffect(() => {
+    trackAppOpen("cold_start");
+  }, [trackAppOpen]);
 
   useEffect(() => {
     cardsRef.current = cards;
@@ -624,6 +656,27 @@ export default function App() {
   useEffect(() => {
     void configureNotifications();
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const hydrateNotificationOpen = async () => {
+      const data = await getLastNotificationOpen();
+      if (!isActive || !data) return;
+      trackNotificationOpen(data);
+    };
+
+    hydrateNotificationOpen();
+
+    const subscription = addNotificationOpenListener((data) => {
+      trackNotificationOpen(data);
+    });
+
+    return () => {
+      isActive = false;
+      subscription.remove();
+    };
+  }, [trackNotificationOpen]);
 
   useEffect(() => {
     const hydratePushToken = async () => {
@@ -926,7 +979,7 @@ export default function App() {
     []
   );
 
-  const fetchScores = useCallback(async () => {
+  const fetchScores = useCallback(async (source: RefreshSource = "auto") => {
     if (apiBaseMissing) {
       if (isMountedRef.current) {
         setErrorMessage(MISSING_API_BASE_WARNING);
@@ -942,6 +995,7 @@ export default function App() {
     isFetchingRef.current = true;
     setIsFetching(true);
     setErrorMessage(null);
+    trackRefresh(source);
     const selectionId = buildSelectionId(selectedLeagueIds, selectedTeamIds);
 
     try {
@@ -1067,6 +1121,7 @@ export default function App() {
     hasNotificationsEnabled,
     notificationPermissionGranted,
     notificationPrefs,
+    trackRefresh,
   ]);
 
   useEffect(() => {
@@ -1120,7 +1175,7 @@ export default function App() {
         // Ignore cache hydration failures.
       }
 
-      await fetchScores();
+      await fetchScores("initial");
     };
 
     hydrateAndFetch();
@@ -1136,7 +1191,7 @@ export default function App() {
   const startAutoRefresh = useCallback(() => {
     if (autoRefreshRef.current) return;
     autoRefreshRef.current = setInterval(() => {
-      fetchScores();
+      fetchScores("auto");
     }, refreshIntervalMs);
   }, [fetchScores, refreshIntervalMs]);
 
@@ -1190,7 +1245,8 @@ export default function App() {
       if (nextState === "active") {
         startAutoRefresh();
         if (!wasActive) {
-          fetchScores();
+          trackAppOpen("resume");
+          fetchScores("app_active");
         }
         return;
       }
@@ -1202,7 +1258,7 @@ export default function App() {
       stopAutoRefresh();
       subscription.remove();
     };
-  }, [fetchScores, startAutoRefresh, stopAutoRefresh, isOnboarding]);
+  }, [fetchScores, startAutoRefresh, stopAutoRefresh, isOnboarding, trackAppOpen]);
 
   useEffect(() => {
     if (isOnboarding) return;
@@ -1213,7 +1269,7 @@ export default function App() {
 
   const handleRetry = () => {
     if (isFetching) return;
-    fetchScores();
+    fetchScores("manual");
   };
 
   const handleOpenSettings = () => {
@@ -1706,7 +1762,7 @@ export default function App() {
             />
           )}
           refreshing={isFetching}
-          onRefresh={fetchScores}
+          onRefresh={() => fetchScores("manual")}
           scrollEnabled={!isDragging}
           ListHeaderComponent={
             showHeaderBanner ? (

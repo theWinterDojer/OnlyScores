@@ -1,4 +1,4 @@
-export type NotificationSettingKey = "notifyStart" | "notifyScore" | "notifyFinal";
+export type NotificationSettingKey = 'notifyStart' | 'notifyScore' | 'notifyFinal';
 
 export type CardNotificationPrefs = Record<NotificationSettingKey, boolean>;
 

@@ -1,9 +1,9 @@
-import { Platform } from "react-native";
-import * as Notifications from "expo-notifications";
+import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
-import { readCache, writeCache } from "../providers/cache";
+import { readCache, writeCache } from '../providers/cache';
 
-const PUSH_TOKEN_CACHE_KEY = "notifications:deviceToken";
+const PUSH_TOKEN_CACHE_KEY = 'notifications:deviceToken';
 
 export type NotificationOpenData = {
   id: string;
@@ -18,7 +18,7 @@ const buildNotificationOpenData = (
   const rawType = (data as Record<string, unknown>).type;
   return {
     id: response.notification.request.identifier,
-    type: typeof rawType === "string" ? rawType : undefined,
+    type: typeof rawType === 'string' ? rawType : undefined,
   };
 };
 
@@ -33,9 +33,9 @@ export const configureNotifications = async () => {
     }),
   });
 
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
       importance: Notifications.AndroidImportance.DEFAULT,
     });
   }
@@ -43,13 +43,12 @@ export const configureNotifications = async () => {
 
 export const ensureNotificationPermissions = async () => {
   const existing = await Notifications.getPermissionsAsync();
-  if (existing.status === "granted") return true;
+  if (existing.status === 'granted') return true;
   const requested = await Notifications.requestPermissionsAsync();
-  return requested.status === "granted";
+  return requested.status === 'granted';
 };
 
-export const getCachedPushToken = async () =>
-  readCache<string>(PUSH_TOKEN_CACHE_KEY);
+export const getCachedPushToken = async () => readCache<string>(PUSH_TOKEN_CACHE_KEY);
 
 export const fetchExpoPushToken = async () => {
   const cached = await readCache<string>(PUSH_TOKEN_CACHE_KEY);
@@ -64,9 +63,7 @@ export const fetchExpoPushToken = async () => {
   }
 };
 
-export const addNotificationOpenListener = (
-  handler: (data: NotificationOpenData) => void
-) =>
+export const addNotificationOpenListener = (handler: (data: NotificationOpenData) => void) =>
   Notifications.addNotificationResponseReceivedListener((response) => {
     const data = buildNotificationOpenData(response);
     if (!data) return;

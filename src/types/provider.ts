@@ -1,4 +1,4 @@
-import { GameStatus } from "./score";
+import { GameStatus } from './score';
 
 export type ProviderLeague = {
   id: string;

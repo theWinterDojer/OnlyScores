@@ -1,5 +1,7 @@
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
+
+import { useHeaderStyles } from '../styles';
 
 type AppHeaderProps = {
   title?: string;
@@ -13,8 +15,8 @@ type AppHeaderProps = {
 };
 
 export default function AppHeader({
-  title = "Only Scores",
-  subtitle = "Just scores. Fast.",
+  title = 'Only Scores',
+  subtitle = 'Just scores. Fast.',
   actionLabel,
   onActionPress,
   actionDisabled = false,
@@ -22,6 +24,7 @@ export default function AppHeader({
   onSecondaryActionPress,
   secondaryActionDisabled = false,
 }: AppHeaderProps) {
+  const styles = useHeaderStyles();
   return (
     <View style={styles.header}>
       <View style={styles.titleStack}>
@@ -76,32 +79,3 @@ export default function AppHeader({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  titleStack: { flex: 1 },
-  appTitle: { color: "white", fontSize: 28, fontWeight: "800" },
-  subtitle: { color: "rgba(255,255,255,0.7)", marginTop: 4 },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  headerButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.12)",
-  },
-  headerButtonSecondary: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  headerButtonPressed: { opacity: 0.8 },
-  headerButtonText: { color: "white", fontWeight: "700", fontSize: 13 },
-  headerButtonDisabled: { opacity: 0.5 },
-  headerButtonTextDisabled: { color: "rgba(255,255,255,0.7)" },
-});

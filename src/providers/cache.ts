@@ -1,6 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const CACHE_PREFIX = "onlyscores:cache:";
+const CACHE_PREFIX = 'onlyscores:cache:';
 
 const buildCacheKey = (key: string) => `${CACHE_PREFIX}${key}`;
 

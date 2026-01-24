@@ -1,14 +1,9 @@
-import { backendContract } from "./backendContract";
+import { backendContract } from './backendContract';
 
-const normalizeApiBase = (value?: string) =>
-  value ? value.replace(/\/+$/, "") : "";
+const normalizeApiBase = (value?: string) => (value ? value.replace(/\/+$/, '') : '');
 const API_BASE = normalizeApiBase(process.env.EXPO_PUBLIC_ONLYSCORES_API_BASE_URL);
 
-export type AnalyticsEventName =
-  | "app_open"
-  | "refresh"
-  | "notification_open"
-  | "warm_start_timing";
+export type AnalyticsEventName = 'app_open' | 'refresh' | 'notification_open' | 'warm_start_timing';
 
 export type AnalyticsMetadata = Record<string, string>;
 
@@ -32,14 +27,11 @@ export const trackAnalyticsEvent = async (
   }
 
   try {
-    const response = await fetch(
-      `${API_BASE}${backendContract.endpoints.analyticsEvents}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }
-    );
+    const response = await fetch(`${API_BASE}${backendContract.endpoints.analyticsEvents}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
     return response.ok;
   } catch {
     return false;

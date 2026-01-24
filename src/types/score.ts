@@ -1,4 +1,4 @@
-export type GameStatus = "scheduled" | "live" | "final";
+export type GameStatus = 'scheduled' | 'live' | 'final';
 
 export type Game = {
   id: string;

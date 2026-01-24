@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   SafeAreaView,
@@ -14,10 +14,10 @@ import {
   PanResponder,
   Platform,
   UIManager,
-} from "react-native";
-import type { LayoutChangeEvent } from "react-native";
-import AppHeader from "./src/components/AppHeader";
-import ScoreCardView from "./src/components/ScoreCardView";
+} from 'react-native';
+import type { LayoutChangeEvent } from 'react-native';
+import AppHeader from './src/components/AppHeader';
+import ScoreCardView from './src/components/ScoreCardView';
 import {
   addNotificationOpenListener,
   configureNotifications,
@@ -25,40 +25,39 @@ import {
   fetchExpoPushToken,
   getCachedPushToken,
   getLastNotificationOpen,
-} from "./src/notifications/notifications";
-import { trackAnalyticsEvent } from "./src/providers/analytics";
-import { getProvider } from "./src/providers";
-import { readCache, writeCache } from "./src/providers/cache";
-import { submitDeviceSubscription } from "./src/providers/notifications";
+} from './src/notifications/notifications';
+import { trackAnalyticsEvent } from './src/providers/analytics';
+import { getProvider } from './src/providers';
+import { readCache, writeCache } from './src/providers/cache';
+import { submitDeviceSubscription } from './src/providers/notifications';
 import {
   DEFAULT_NOTIFICATION_PREFS,
   NotificationPrefsByCard,
   NotificationSettingKey,
-} from "./src/types/notifications";
-import type { NotificationOpenData } from "./src/notifications/notifications";
-import type { ProviderScoresRequest } from "./src/providers/Provider";
+} from './src/types/notifications';
+import type { NotificationOpenData } from './src/notifications/notifications';
+import type { ProviderScoresRequest } from './src/providers/Provider';
 import type {
   ProviderGame,
   ProviderLeague,
   ProviderScoreCard,
   ProviderTeam,
-} from "./src/types/provider";
-import type { Game, ScoreCard } from "./src/types/score";
+} from './src/types/provider';
+import type { Game, ScoreCard } from './src/types/score';
 
-const SCORE_SNAPSHOT_CACHE_KEY = "scores:snapshots";
-const CARD_ORDER_CACHE_KEY = "cards:order";
-const CARD_EXPANSION_CACHE_KEY = "cards:expanded";
-const SELECTION_CACHE_KEY = "selection:preferences";
-const NOTIFICATION_PREFS_CACHE_KEY = "cards:notifications";
-const REFRESH_INTERVAL_CACHE_KEY = "settings:refresh-interval-seconds";
-const LATEST_ONLY_CACHE_KEY = "settings:latest-only";
+const SCORE_SNAPSHOT_CACHE_KEY = 'scores:snapshots';
+const CARD_ORDER_CACHE_KEY = 'cards:order';
+const CARD_EXPANSION_CACHE_KEY = 'cards:expanded';
+const SELECTION_CACHE_KEY = 'selection:preferences';
+const NOTIFICATION_PREFS_CACHE_KEY = 'cards:notifications';
+const REFRESH_INTERVAL_CACHE_KEY = 'settings:refresh-interval-seconds';
+const LATEST_ONLY_CACHE_KEY = 'settings:latest-only';
 const DEFAULT_REFRESH_INTERVAL_SECONDS = 60;
 const REFRESH_INTERVAL_MIN_SECONDS = 60;
 const REFRESH_INTERVAL_MAX_SECONDS = 120;
 const REFRESH_INTERVAL_STEP_SECONDS = 10;
 const API_BASE_URL = process.env.EXPO_PUBLIC_ONLYSCORES_API_BASE_URL;
-const MISSING_API_BASE_WARNING =
-  "Missing API base URL. Set EXPO_PUBLIC_ONLYSCORES_API_BASE_URL.";
+const MISSING_API_BASE_WARNING = 'Missing API base URL. Set EXPO_PUBLIC_ONLYSCORES_API_BASE_URL.';
 
 type SelectionPreferences = {
   leagueIds: string[];
@@ -73,7 +72,7 @@ type ScoresCacheSnapshot = {
 
 type ScoresCacheStore = Record<string, ScoresCacheSnapshot>;
 
-type RefreshSource = "initial" | "manual" | "auto" | "app_active";
+type RefreshSource = 'initial' | 'manual' | 'auto' | 'app_active';
 type CardExpansionState = Record<string, boolean>;
 
 const normalizeSelectionIds = (ids: string[]) =>
@@ -86,7 +85,7 @@ const buildSelectionId = (leagueIds: string[], teamIds: string[]) => {
   if (leagueIds.length === 0 && teamIds.length === 0) return null;
   const normalizedLeagues = normalizeSelectionIds(leagueIds);
   const normalizedTeams = normalizeSelectionIds(teamIds);
-  return `leagues:${normalizedLeagues.join(",")}|teams:${normalizedTeams.join(",")}`;
+  return `leagues:${normalizedLeagues.join(',')}|teams:${normalizedTeams.join(',')}`;
 };
 
 const readScoresSnapshot = async (selectionId: string) => {
@@ -95,10 +94,7 @@ const readScoresSnapshot = async (selectionId: string) => {
   return cached[selectionId] ?? null;
 };
 
-const writeScoresSnapshot = async (
-  selectionId: string,
-  snapshot: ScoresCacheSnapshot
-) => {
+const writeScoresSnapshot = async (selectionId: string, snapshot: ScoresCacheSnapshot) => {
   const cached = await readCache<ScoresCacheStore>(SCORE_SNAPSHOT_CACHE_KEY);
   const next: ScoresCacheStore = { ...(cached ?? {}), [selectionId]: snapshot };
   await writeCache(SCORE_SNAPSHOT_CACHE_KEY, next);
@@ -106,34 +102,34 @@ const writeScoresSnapshot = async (
 
 const formatLocalDateKey = (value: Date) => {
   const year = value.getFullYear();
-  const month = `${value.getMonth() + 1}`.padStart(2, "0");
-  const day = `${value.getDate()}`.padStart(2, "0");
+  const month = `${value.getMonth() + 1}`.padStart(2, '0');
+  const day = `${value.getDate()}`.padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
 const formatScheduledTime = (startTime: string) => {
   const date = new Date(startTime);
-  if (Number.isNaN(date.getTime())) return "TBD";
+  if (Number.isNaN(date.getTime())) return 'TBD';
   const hours = date.getHours();
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  const period = hours >= 12 ? "PM" : "AM";
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const period = hours >= 12 ? 'PM' : 'AM';
   const normalizedHours = hours % 12 === 0 ? 12 : hours % 12;
   return `${normalizedHours}:${minutes} ${period}`;
 };
 
 const formatGameTime = (game: ProviderGame) => {
-  if (game.status === "live") return "LIVE";
-  if (game.status === "final") return "FINAL";
+  if (game.status === 'live') return 'LIVE';
+  if (game.status === 'final') return 'FINAL';
   return formatScheduledTime(game.startTime);
 };
 
 const formatUpdatedLabel = (timestamp?: string) => {
-  if (!timestamp) return "Updated --";
+  if (!timestamp) return 'Updated --';
   const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return "Updated --";
+  if (Number.isNaN(date.getTime())) return 'Updated --';
   const hours = date.getHours();
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  const period = hours >= 12 ? "PM" : "AM";
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const period = hours >= 12 ? 'PM' : 'AM';
   const normalizedHours = hours % 12 === 0 ? 12 : hours % 12;
   return `Updated ${normalizedHours}:${minutes} ${period}`;
 };
@@ -165,9 +161,7 @@ const isNflLeague = (league: ProviderLeague) => {
   const normalizedId = league.id.trim().toLowerCase();
   const normalizedName = league.name.trim().toLowerCase();
   return (
-    normalizedId === "nfl" ||
-    normalizedId.startsWith("nfl-") ||
-    normalizedName.includes("nfl")
+    normalizedId === 'nfl' || normalizedId.startsWith('nfl-') || normalizedName.includes('nfl')
   );
 };
 
@@ -254,9 +248,9 @@ const pickEarliestGame = (games: Game[]) => {
 
 const selectCasualGames = (games: Game[]) => {
   if (games.length <= 1) return games;
-  const liveGames = games.filter((game) => game.status === "live");
+  const liveGames = games.filter((game) => game.status === 'live');
   if (liveGames.length > 0) return [pickLatestGame(liveGames)];
-  const finalGames = games.filter((game) => game.status === "final");
+  const finalGames = games.filter((game) => game.status === 'final');
   if (finalGames.length > 0) return [pickLatestGame(finalGames)];
   return [pickEarliestGame(games)];
 };
@@ -354,33 +348,25 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false);
   const [selectionHydrated, setSelectionHydrated] = useState(false);
   const [isOnboarding, setIsOnboarding] = useState(true);
-  const [onboardingStep, setOnboardingStep] = useState<"leagues" | "teams">(
-    "leagues"
-  );
+  const [onboardingStep, setOnboardingStep] = useState<'leagues' | 'teams'>('leagues');
   const [selectedLeagueIds, setSelectedLeagueIds] = useState<string[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [leagues, setLeagues] = useState<ProviderLeague[]>([]);
   const [cachedFetchedAt, setCachedFetchedAt] = useState<string | null>(null);
-  const [teamsByLeagueId, setTeamsByLeagueId] = useState<
-    Record<string, ProviderTeam[]>
-  >({});
+  const [teamsByLeagueId, setTeamsByLeagueId] = useState<Record<string, ProviderTeam[]>>({});
   const [isLoadingLeagues, setIsLoadingLeagues] = useState(false);
   const [isLoadingTeams, setIsLoadingTeams] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [notificationPrefs, setNotificationPrefs] =
-    useState<NotificationPrefsByCard>({});
-  const [notificationPermissionGranted, setNotificationPermissionGranted] =
-    useState(false);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefsByCard>({});
+  const [notificationPermissionGranted, setNotificationPermissionGranted] = useState(false);
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
   const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState(
     DEFAULT_REFRESH_INTERVAL_SECONDS
   );
   const [showLatestOnly, setShowLatestOnly] = useState(false);
-  const [cardExpansionById, setCardExpansionById] = useState<CardExpansionState>(
-    {}
-  );
+  const [cardExpansionById, setCardExpansionById] = useState<CardExpansionState>({});
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
   const cardOrderRef = useRef<string[] | null>(null);
@@ -393,19 +379,14 @@ export default function App() {
   const dragTranslateY = useRef(new Animated.Value(0)).current;
   const dragStartYRef = useRef(0);
   const draggingIdRef = useRef<string | null>(null);
-  const itemLayoutsRef = useRef<Record<string, { y: number; height: number }>>(
-    {}
-  );
+  const itemLayoutsRef = useRef<Record<string, { y: number; height: number }>>({});
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const apiBaseMissing = !API_BASE_URL || API_BASE_URL.trim().length === 0;
   const isDragging = draggingCardId !== null;
   const refreshIntervalMs = refreshIntervalSeconds * 1000;
   const listContentStyle = useMemo(
-    () => [
-      styles.listContent,
-      cards.length === 0 ? styles.listContentEmpty : null,
-    ],
+    () => [styles.listContent, cards.length === 0 ? styles.listContentEmpty : null],
     [cards.length]
   );
   const leagueNameById = useMemo(
@@ -425,10 +406,7 @@ export default function App() {
     });
     return lookup;
   }, [teamsByLeagueId]);
-  const selectedLeagueSet = useMemo(
-    () => new Set(selectedLeagueIds),
-    [selectedLeagueIds]
-  );
+  const selectedLeagueSet = useMemo(() => new Set(selectedLeagueIds), [selectedLeagueIds]);
   const hasNotificationsEnabled = useMemo(
     () =>
       cards.some((card) => {
@@ -442,9 +420,9 @@ export default function App() {
     [cards, cachedFetchedAt]
   );
   const homeSubtitle = useMemo(() => {
-    if (isFetching) return "Refreshing...";
+    if (isFetching) return 'Refreshing...';
     if (latestUpdated) return formatUpdatedLabel(latestUpdated);
-    return "Just scores. Fast.";
+    return 'Just scores. Fast.';
   }, [isFetching, latestUpdated]);
   const displayCards = useMemo(() => {
     if (!showLatestOnly) return cards;
@@ -454,39 +432,36 @@ export default function App() {
     }));
   }, [cards, showLatestOnly]);
 
-  const trackAppOpen = useCallback((source: "cold_start" | "resume") => {
-    void trackAnalyticsEvent("app_open", { source });
+  const trackAppOpen = useCallback((source: 'cold_start' | 'resume') => {
+    void trackAnalyticsEvent('app_open', { source });
   }, []);
 
   const trackRefresh = useCallback((source: RefreshSource) => {
-    void trackAnalyticsEvent("refresh", { source });
+    void trackAnalyticsEvent('refresh', { source });
   }, []);
 
-  const trackWarmStartTiming = useCallback((source: "cache" | "network") => {
+  const trackWarmStartTiming = useCallback((source: 'cache' | 'network') => {
     if (warmStartTimingRef.current.tracked) return;
     warmStartTimingRef.current.tracked = true;
     const durationMs = Date.now() - warmStartTimingRef.current.startMs;
-    void trackAnalyticsEvent("warm_start_timing", {
+    void trackAnalyticsEvent('warm_start_timing', {
       source,
       durationMs: `${durationMs}`,
     });
   }, []);
 
-  const trackNotificationOpen = useCallback(
-    (data: NotificationOpenData) => {
-      if (data.id === lastNotificationIdRef.current) return;
-      lastNotificationIdRef.current = data.id;
-      const metadata: Record<string, string> = {};
-      if (data.type) {
-        metadata.type = data.type;
-      }
-      void trackAnalyticsEvent("notification_open", metadata);
-    },
-    []
-  );
+  const trackNotificationOpen = useCallback((data: NotificationOpenData) => {
+    if (data.id === lastNotificationIdRef.current) return;
+    lastNotificationIdRef.current = data.id;
+    const metadata: Record<string, string> = {};
+    if (data.type) {
+      metadata.type = data.type;
+    }
+    void trackAnalyticsEvent('notification_open', metadata);
+  }, []);
 
   useEffect(() => {
-    trackAppOpen("cold_start");
+    trackAppOpen('cold_start');
   }, [trackAppOpen]);
 
   useEffect(() => {
@@ -498,10 +473,7 @@ export default function App() {
   }, [selectedLeagueIds, selectedTeamIds]);
 
   useEffect(() => {
-    if (
-      Platform.OS === "android" &&
-      UIManager.setLayoutAnimationEnabledExperimental
-    ) {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
   }, [apiBaseMissing]);
@@ -510,10 +482,9 @@ export default function App() {
     const hydrateRefreshInterval = async () => {
       try {
         const cached = await readCache<number>(REFRESH_INTERVAL_CACHE_KEY);
-        if (typeof cached !== "number" || !Number.isFinite(cached)) return;
+        if (typeof cached !== 'number' || !Number.isFinite(cached)) return;
         const rounded =
-          Math.round(cached / REFRESH_INTERVAL_STEP_SECONDS) *
-          REFRESH_INTERVAL_STEP_SECONDS;
+          Math.round(cached / REFRESH_INTERVAL_STEP_SECONDS) * REFRESH_INTERVAL_STEP_SECONDS;
         const normalized = Math.min(
           REFRESH_INTERVAL_MAX_SECONDS,
           Math.max(REFRESH_INTERVAL_MIN_SECONDS, rounded)
@@ -533,7 +504,7 @@ export default function App() {
     const hydrateLatestOnly = async () => {
       try {
         const cached = await readCache<boolean>(LATEST_ONLY_CACHE_KEY);
-        if (typeof cached !== "boolean") return;
+        if (typeof cached !== 'boolean') return;
         if (isMountedRef.current) {
           setShowLatestOnly(cached);
         }
@@ -548,9 +519,7 @@ export default function App() {
   useEffect(() => {
     const hydrateCardExpansion = async () => {
       try {
-        const cached = await readCache<CardExpansionState>(
-          CARD_EXPANSION_CACHE_KEY
-        );
+        const cached = await readCache<CardExpansionState>(CARD_EXPANSION_CACHE_KEY);
         if (cached && isMountedRef.current) {
           setCardExpansionById(cached);
         }
@@ -572,9 +541,7 @@ export default function App() {
         const next = toggleId(prev, leagueId);
         if (prev.includes(leagueId)) {
           setSelectedTeamIds((currentTeams) =>
-            currentTeams.filter(
-              (teamId) => teamLeagueLookup[teamId] !== leagueId
-            )
+            currentTeams.filter((teamId) => teamLeagueLookup[teamId] !== leagueId)
           );
         }
         return next;
@@ -590,9 +557,7 @@ export default function App() {
   useEffect(() => {
     const hydrateSelection = async () => {
       try {
-        const cached = await readCache<SelectionPreferences>(
-          SELECTION_CACHE_KEY
-        );
+        const cached = await readCache<SelectionPreferences>(SELECTION_CACHE_KEY);
         if (cached) {
           setSelectedLeagueIds(cached.leagueIds);
           setSelectedTeamIds(cached.teamIds);
@@ -654,9 +619,7 @@ export default function App() {
     if (!selectionHydrated) return;
     const hydrateNotificationPrefs = async () => {
       try {
-        const cached = await readCache<NotificationPrefsByCard>(
-          NOTIFICATION_PREFS_CACHE_KEY
-        );
+        const cached = await readCache<NotificationPrefsByCard>(NOTIFICATION_PREFS_CACHE_KEY);
         if (cached && isMountedRef.current) {
           setNotificationPrefs(cached);
         }
@@ -782,22 +745,18 @@ export default function App() {
     }
   }, []);
 
-  const persistCardExpansion = useCallback(
-    async (nextValue: CardExpansionState) => {
-      try {
-        await writeCache(CARD_EXPANSION_CACHE_KEY, nextValue);
-      } catch {
-        // Card expansion persistence should not block UI updates.
-      }
-    },
-    []
-  );
+  const persistCardExpansion = useCallback(async (nextValue: CardExpansionState) => {
+    try {
+      await writeCache(CARD_EXPANSION_CACHE_KEY, nextValue);
+    } catch {
+      // Card expansion persistence should not block UI updates.
+    }
+  }, []);
 
   const updateRefreshInterval = useCallback(
     (nextSeconds: number) => {
       const rounded =
-        Math.round(nextSeconds / REFRESH_INTERVAL_STEP_SECONDS) *
-        REFRESH_INTERVAL_STEP_SECONDS;
+        Math.round(nextSeconds / REFRESH_INTERVAL_STEP_SECONDS) * REFRESH_INTERVAL_STEP_SECONDS;
       const normalized = Math.min(
         REFRESH_INTERVAL_MAX_SECONDS,
         Math.max(REFRESH_INTERVAL_MIN_SECONDS, rounded)
@@ -827,13 +786,10 @@ export default function App() {
     [persistCardExpansion]
   );
 
-  const handleCardLayout = useCallback(
-    (id: string, event: LayoutChangeEvent) => {
-      const { y, height } = event.nativeEvent.layout;
-      itemLayoutsRef.current[id] = { y, height };
-    },
-    []
-  );
+  const handleCardLayout = useCallback((id: string, event: LayoutChangeEvent) => {
+    const { y, height } = event.nativeEvent.layout;
+    itemLayoutsRef.current[id] = { y, height };
+  }, []);
 
   const beginDrag = useCallback(
     (id: string) => {
@@ -912,7 +868,7 @@ export default function App() {
       }
     } catch {
       if (isMountedRef.current) {
-        setOnboardingError("Unable to load leagues right now.");
+        setOnboardingError('Unable to load leagues right now.');
       }
     } finally {
       if (isMountedRef.current) {
@@ -921,204 +877,177 @@ export default function App() {
     }
   }, []);
 
-  const loadTeamsForLeagues = useCallback(
-    async (leagueIds: string[]) => {
-      if (apiBaseMissing) {
-        if (isMountedRef.current) {
-          setOnboardingError(MISSING_API_BASE_WARNING);
-          setIsLoadingTeams(false);
-        }
-        return;
-      }
-      if (leagueIds.length === 0) {
-        setTeamsByLeagueId({});
-        setSelectedTeamIds([]);
-        return;
-      }
-      setIsLoadingTeams(true);
-      setOnboardingError(null);
-      try {
-        const provider = getProvider();
-        const results = await Promise.all(
-          leagueIds.map((leagueId) => provider.getTeams(leagueId))
-        );
-        const nextTeams: Record<string, ProviderTeam[]> = {};
-        leagueIds.forEach((leagueId, index) => {
-          nextTeams[leagueId] = results[index] ?? [];
-        });
-        if (isMountedRef.current) {
-          setTeamsByLeagueId(nextTeams);
-        }
-      } catch {
-        if (isMountedRef.current) {
-          setOnboardingError("Unable to load teams right now.");
-        }
-      } finally {
-        if (isMountedRef.current) {
-          setIsLoadingTeams(false);
-        }
-      }
-    },
-    []
-  );
-
-  const fetchScores = useCallback(async (source: RefreshSource = "auto") => {
+  const loadTeamsForLeagues = useCallback(async (leagueIds: string[]) => {
     if (apiBaseMissing) {
       if (isMountedRef.current) {
-        setErrorMessage(MISSING_API_BASE_WARNING);
-        setIsInitialLoading(false);
-        setIsFetching(false);
-        setIsOffline(false);
+        setOnboardingError(MISSING_API_BASE_WARNING);
+        setIsLoadingTeams(false);
       }
-      isFetchingRef.current = false;
       return;
     }
-    if (isOnboarding) return;
-    if (isFetchingRef.current) return;
-    isFetchingRef.current = true;
-    setIsFetching(true);
-    setErrorMessage(null);
-    trackRefresh(source);
-    const selectionId = buildSelectionId(selectedLeagueIds, selectedTeamIds);
-
+    if (leagueIds.length === 0) {
+      setTeamsByLeagueId({});
+      setSelectedTeamIds([]);
+      return;
+    }
+    setIsLoadingTeams(true);
+    setOnboardingError(null);
     try {
       const provider = getProvider();
-      const today = formatLocalDateKey(new Date());
-      const nflLeagueIdSet = new Set(
-        leagues.filter(isNflLeague).map((league) => league.id)
-      );
-      const nflLeagueIds = selectedLeagueIds.filter((id) =>
-        nflLeagueIdSet.has(id)
-      );
-      const nonNflLeagueIds = selectedLeagueIds.filter(
-        (id) => !nflLeagueIdSet.has(id)
-      );
-      const requests: ProviderScoresRequest[] = [];
-      if (nflLeagueIds.length > 0) {
-        requests.push({
-          leagueIds: nflLeagueIds,
-          teamIds: selectedTeamIds,
-          date: today,
-          window: "week",
-        });
-      }
-      if (nonNflLeagueIds.length > 0) {
-        requests.push({
-          leagueIds: nonNflLeagueIds,
-          teamIds: selectedTeamIds,
-        });
-      }
-      if (requests.length === 0) {
-        requests.push({
-          leagueIds: selectedLeagueIds,
-          teamIds: selectedTeamIds,
-        });
-      }
-      const providerCards = (
-        await Promise.all(requests.map((request) => provider.getScores(request)))
-      ).flat();
-      const filteredCards = filterCardsByTeamIds(
-        providerCards,
-        selectedTeamIds
-      );
-      const leagueIds = Array.from(
-        new Set(filteredCards.map((card) => card.leagueId))
-      );
-      const teams = (
-        await Promise.all(
-          leagueIds.map((leagueId) => provider.getTeams(leagueId))
-        )
-      ).flat();
-      const normalized = normalizeCards(filteredCards, buildTeamLookup(teams));
-      const ordered = applyCardOrder(normalized, cardOrderRef.current);
-      const fetchedAt = new Date().toISOString();
+      const results = await Promise.all(leagueIds.map((leagueId) => provider.getTeams(leagueId)));
+      const nextTeams: Record<string, ProviderTeam[]> = {};
+      leagueIds.forEach((leagueId, index) => {
+        nextTeams[leagueId] = results[index] ?? [];
+      });
       if (isMountedRef.current) {
-        setCards(ordered);
-        setIsOffline(false);
-        setCachedFetchedAt(fetchedAt);
-        ensureNotificationPrefs(ordered);
-        if (source === "initial" && ordered.length > 0) {
-          trackWarmStartTiming("network");
-        }
-      }
-      try {
-        if (selectionId) {
-          await writeScoresSnapshot(selectionId, {
-            selectionId,
-            fetchedAt,
-            cards: ordered,
-          });
-        }
-      } catch {
-        // Cache failures should not block score updates.
+        setTeamsByLeagueId(nextTeams);
       }
     } catch {
       if (isMountedRef.current) {
-        setErrorMessage("Unable to load scores. Check your connection.");
-        setIsOffline(true);
-      }
-      try {
-        const cachedOrder = await readCache<string[]>(CARD_ORDER_CACHE_KEY);
-        if (cachedOrder && cachedOrder.length > 0) {
-          cardOrderRef.current = cachedOrder;
-        }
-        if (selectionId) {
-          const snapshot = await readScoresSnapshot(selectionId);
-          if (snapshot && isMountedRef.current) {
-            setCards(applyCardOrder(snapshot.cards, cardOrderRef.current));
-            setCachedFetchedAt(snapshot.fetchedAt);
-            ensureNotificationPrefs(snapshot.cards);
-          }
-        }
-      } catch {
-        // Ignore cache fallback failures.
+        setOnboardingError('Unable to load teams right now.');
       }
     } finally {
       if (isMountedRef.current) {
-        setIsInitialLoading(false);
-        setIsFetching(false);
+        setIsLoadingTeams(false);
       }
-      isFetchingRef.current = false;
     }
-  }, [
-    apiBaseMissing,
-    isOnboarding,
-    selectedLeagueIds,
-    selectedTeamIds,
-    leagues,
-    hasNotificationsEnabled,
-    notificationPermissionGranted,
-    notificationPrefs,
-    trackRefresh,
-    trackWarmStartTiming,
-  ]);
+  }, []);
+
+  const fetchScores = useCallback(
+    async (source: RefreshSource = 'auto') => {
+      if (apiBaseMissing) {
+        if (isMountedRef.current) {
+          setErrorMessage(MISSING_API_BASE_WARNING);
+          setIsInitialLoading(false);
+          setIsFetching(false);
+          setIsOffline(false);
+        }
+        isFetchingRef.current = false;
+        return;
+      }
+      if (isOnboarding) return;
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+      setIsFetching(true);
+      setErrorMessage(null);
+      trackRefresh(source);
+      const selectionId = buildSelectionId(selectedLeagueIds, selectedTeamIds);
+
+      try {
+        const provider = getProvider();
+        const today = formatLocalDateKey(new Date());
+        const nflLeagueIdSet = new Set(leagues.filter(isNflLeague).map((league) => league.id));
+        const nflLeagueIds = selectedLeagueIds.filter((id) => nflLeagueIdSet.has(id));
+        const nonNflLeagueIds = selectedLeagueIds.filter((id) => !nflLeagueIdSet.has(id));
+        const requests: ProviderScoresRequest[] = [];
+        if (nflLeagueIds.length > 0) {
+          requests.push({
+            leagueIds: nflLeagueIds,
+            teamIds: selectedTeamIds,
+            date: today,
+            window: 'week',
+          });
+        }
+        if (nonNflLeagueIds.length > 0) {
+          requests.push({
+            leagueIds: nonNflLeagueIds,
+            teamIds: selectedTeamIds,
+          });
+        }
+        if (requests.length === 0) {
+          requests.push({
+            leagueIds: selectedLeagueIds,
+            teamIds: selectedTeamIds,
+          });
+        }
+        const providerCards = (
+          await Promise.all(requests.map((request) => provider.getScores(request)))
+        ).flat();
+        const filteredCards = filterCardsByTeamIds(providerCards, selectedTeamIds);
+        const leagueIds = Array.from(new Set(filteredCards.map((card) => card.leagueId)));
+        const teams = (
+          await Promise.all(leagueIds.map((leagueId) => provider.getTeams(leagueId)))
+        ).flat();
+        const normalized = normalizeCards(filteredCards, buildTeamLookup(teams));
+        const ordered = applyCardOrder(normalized, cardOrderRef.current);
+        const fetchedAt = new Date().toISOString();
+        if (isMountedRef.current) {
+          setCards(ordered);
+          setIsOffline(false);
+          setCachedFetchedAt(fetchedAt);
+          ensureNotificationPrefs(ordered);
+          if (source === 'initial' && ordered.length > 0) {
+            trackWarmStartTiming('network');
+          }
+        }
+        try {
+          if (selectionId) {
+            await writeScoresSnapshot(selectionId, {
+              selectionId,
+              fetchedAt,
+              cards: ordered,
+            });
+          }
+        } catch {
+          // Cache failures should not block score updates.
+        }
+      } catch {
+        if (isMountedRef.current) {
+          setErrorMessage('Unable to load scores. Check your connection.');
+          setIsOffline(true);
+        }
+        try {
+          const cachedOrder = await readCache<string[]>(CARD_ORDER_CACHE_KEY);
+          if (cachedOrder && cachedOrder.length > 0) {
+            cardOrderRef.current = cachedOrder;
+          }
+          if (selectionId) {
+            const snapshot = await readScoresSnapshot(selectionId);
+            if (snapshot && isMountedRef.current) {
+              setCards(applyCardOrder(snapshot.cards, cardOrderRef.current));
+              setCachedFetchedAt(snapshot.fetchedAt);
+              ensureNotificationPrefs(snapshot.cards);
+            }
+          }
+        } catch {
+          // Ignore cache fallback failures.
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setIsInitialLoading(false);
+          setIsFetching(false);
+        }
+        isFetchingRef.current = false;
+      }
+    },
+    [
+      apiBaseMissing,
+      isOnboarding,
+      selectedLeagueIds,
+      selectedTeamIds,
+      leagues,
+      hasNotificationsEnabled,
+      notificationPermissionGranted,
+      notificationPrefs,
+      trackRefresh,
+      trackWarmStartTiming,
+    ]
+  );
 
   useEffect(() => {
-    if (!selectionHydrated || !isOnboarding || onboardingStep !== "leagues") {
+    if (!selectionHydrated || !isOnboarding || onboardingStep !== 'leagues') {
       return;
     }
     if (leagues.length > 0) return;
     void loadLeagues();
-  }, [
-    selectionHydrated,
-    isOnboarding,
-    onboardingStep,
-    leagues.length,
-    loadLeagues,
-  ]);
+  }, [selectionHydrated, isOnboarding, onboardingStep, leagues.length, loadLeagues]);
 
   useEffect(() => {
-    if (!selectionHydrated || !isOnboarding || onboardingStep !== "teams") {
+    if (!selectionHydrated || !isOnboarding || onboardingStep !== 'teams') {
       return;
     }
     void loadTeamsForLeagues(selectedLeagueIds);
-  }, [
-    selectionHydrated,
-    isOnboarding,
-    onboardingStep,
-    selectedLeagueIds,
-    loadTeamsForLeagues,
-  ]);
+  }, [selectionHydrated, isOnboarding, onboardingStep, selectedLeagueIds, loadTeamsForLeagues]);
 
   useEffect(() => {
     if (!selectionHydrated || isOnboarding) return;
@@ -1128,10 +1057,7 @@ export default function App() {
         if (cachedOrder && cachedOrder.length > 0) {
           cardOrderRef.current = cachedOrder;
         }
-        const selectionId = buildSelectionId(
-          selectedLeagueIds,
-          selectedTeamIds
-        );
+        const selectionId = buildSelectionId(selectedLeagueIds, selectedTeamIds);
         if (selectionId) {
           const snapshot = await readScoresSnapshot(selectionId);
           if (snapshot && isMountedRef.current) {
@@ -1139,7 +1065,7 @@ export default function App() {
             setCachedFetchedAt(snapshot.fetchedAt);
             ensureNotificationPrefs(snapshot.cards);
             if (snapshot.cards.length > 0) {
-              trackWarmStartTiming("cache");
+              trackWarmStartTiming('cache');
             }
           }
         }
@@ -1147,7 +1073,7 @@ export default function App() {
         // Ignore cache hydration failures.
       }
 
-      await fetchScores("initial");
+      await fetchScores('initial');
     };
 
     hydrateAndFetch();
@@ -1164,7 +1090,7 @@ export default function App() {
   const startAutoRefresh = useCallback(() => {
     if (autoRefreshRef.current) return;
     autoRefreshRef.current = setInterval(() => {
-      fetchScores("auto");
+      fetchScores('auto');
     }, refreshIntervalMs);
   }, [fetchScores, refreshIntervalMs]);
 
@@ -1175,11 +1101,11 @@ export default function App() {
   }, []);
 
   const handleStartTeams = () => {
-    setOnboardingStep("teams");
+    setOnboardingStep('teams');
   };
 
   const handleBackToLeagues = () => {
-    setOnboardingStep("leagues");
+    setOnboardingStep('leagues');
   };
 
   const handleFinishOnboarding = useCallback(async () => {
@@ -1200,26 +1126,26 @@ export default function App() {
     }
     if (isMountedRef.current) {
       setIsOnboarding(false);
-      setOnboardingStep("leagues");
+      setOnboardingStep('leagues');
       setIsInitialLoading(true);
     }
   }, [selectedLeagueIds, selectedTeamIds, teamLeagueLookup]);
 
   useEffect(() => {
     if (isOnboarding) return;
-    if (appStateRef.current === "active") {
+    if (appStateRef.current === 'active') {
       startAutoRefresh();
     }
 
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      const wasActive = appStateRef.current === "active";
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      const wasActive = appStateRef.current === 'active';
       appStateRef.current = nextState;
 
-      if (nextState === "active") {
+      if (nextState === 'active') {
         startAutoRefresh();
         if (!wasActive) {
-          trackAppOpen("resume");
-          fetchScores("app_active");
+          trackAppOpen('resume');
+          fetchScores('app_active');
         }
         return;
       }
@@ -1235,14 +1161,14 @@ export default function App() {
 
   useEffect(() => {
     if (isOnboarding) return;
-    if (appStateRef.current !== "active") return;
+    if (appStateRef.current !== 'active') return;
     stopAutoRefresh();
     startAutoRefresh();
   }, [isOnboarding, startAutoRefresh, stopAutoRefresh, refreshIntervalMs]);
 
   const handleRetry = () => {
     if (isFetching) return;
-    fetchScores("manual");
+    fetchScores('manual');
   };
 
   const handleOpenSettings = () => {
@@ -1257,7 +1183,7 @@ export default function App() {
     setOnboardingError(null);
     setIsSettingsOpen(false);
     setIsOnboarding(true);
-    setOnboardingStep("leagues");
+    setOnboardingStep('leagues');
     setIsInitialLoading(true);
   }, []);
 
@@ -1302,18 +1228,18 @@ export default function App() {
   }
 
   if (showOnboarding) {
-    const isLeagueStep = onboardingStep === "leagues";
+    const isLeagueStep = onboardingStep === 'leagues';
     const canContinue = selectedLeagueIds.length > 0;
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.onboardingContainer}>
           <Text style={styles.onboardingTitle}>
-            {isLeagueStep ? "Pick your leagues" : "Choose teams"}
+            {isLeagueStep ? 'Pick your leagues' : 'Choose teams'}
           </Text>
           <Text style={styles.onboardingSubtitle}>
             {isLeagueStep
-              ? "Select one or more leagues to build your home screen."
-              : "Optional: pick teams to keep scores even tighter."}
+              ? 'Select one or more leagues to build your home screen.'
+              : 'Optional: pick teams to keep scores even tighter.'}
           </Text>
           {onboardingError ? (
             <View style={styles.onboardingError}>
@@ -1331,24 +1257,11 @@ export default function App() {
                 {leagues.map((league) => {
                   const selected = selectedLeagueSet.has(league.id);
                   return (
-                    <Pressable
-                      key={league.id}
-                      onPress={() => handleToggleLeague(league.id)}
-                    >
-                      <View
-                        style={[
-                          styles.choiceRow,
-                          selected ? styles.choiceRowSelected : null,
-                        ]}
-                      >
+                    <Pressable key={league.id} onPress={() => handleToggleLeague(league.id)}>
+                      <View style={[styles.choiceRow, selected ? styles.choiceRowSelected : null]}>
                         <Text style={styles.choiceText}>{league.name}</Text>
-                        <Text
-                          style={[
-                            styles.choiceTag,
-                            selected ? styles.choiceTagActive : null,
-                          ]}
-                        >
-                          {selected ? "Selected" : "Tap to add"}
+                        <Text style={[styles.choiceTag, selected ? styles.choiceTagActive : null]}>
+                          {selected ? 'Selected' : 'Tap to add'}
                         </Text>
                       </View>
                     </Pressable>
@@ -1358,9 +1271,7 @@ export default function App() {
             ) : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyTitle}>No leagues available</Text>
-                <Text style={styles.emptyBody}>
-                  Try again once leagues load from the provider.
-                </Text>
+                <Text style={styles.emptyBody}>Try again once leagues load from the provider.</Text>
               </View>
             )
           ) : isLoadingTeams ? (
@@ -1390,24 +1301,15 @@ export default function App() {
                       teams.map((team) => {
                         const selected = selectedTeamIds.includes(team.id);
                         return (
-                          <Pressable
-                            key={team.id}
-                            onPress={() => handleToggleTeam(team.id)}
-                          >
+                          <Pressable key={team.id} onPress={() => handleToggleTeam(team.id)}>
                             <View
-                              style={[
-                                styles.choiceRow,
-                                selected ? styles.choiceRowSelected : null,
-                              ]}
+                              style={[styles.choiceRow, selected ? styles.choiceRowSelected : null]}
                             >
                               <Text style={styles.choiceText}>{team.name}</Text>
                               <Text
-                                style={[
-                                  styles.choiceTag,
-                                  selected ? styles.choiceTagActive : null,
-                                ]}
+                                style={[styles.choiceTag, selected ? styles.choiceTagActive : null]}
                               >
-                                {selected ? "Selected" : "Tap to add"}
+                                {selected ? 'Selected' : 'Tap to add'}
                               </Text>
                             </View>
                           </Pressable>
@@ -1475,10 +1377,10 @@ export default function App() {
 
   if (isSettingsOpen) {
     const leagueCountLabel = `${selectedLeagueIds.length} league${
-      selectedLeagueIds.length === 1 ? "" : "s"
+      selectedLeagueIds.length === 1 ? '' : 's'
     }`;
     const teamCountLabel = `${selectedTeamIds.length} team${
-      selectedTeamIds.length === 1 ? "" : "s"
+      selectedTeamIds.length === 1 ? '' : 's'
     }`;
     return (
       <SafeAreaView style={styles.screen}>
@@ -1501,9 +1403,7 @@ export default function App() {
                 pressed ? styles.settingsActionButtonPressed : null,
               ]}
             >
-              <Text style={styles.settingsActionButtonText}>
-                Edit leagues & teams
-              </Text>
+              <Text style={styles.settingsActionButtonText}>Edit leagues & teams</Text>
             </Pressable>
           </View>
           <View style={styles.settingsCard}>
@@ -1514,21 +1414,17 @@ export default function App() {
                 onPress={handleToggleLatestOnly}
                 style={({ pressed }) => [
                   styles.toggleButton,
-                  showLatestOnly
-                    ? styles.toggleButtonOn
-                    : styles.toggleButtonOff,
+                  showLatestOnly ? styles.toggleButtonOn : styles.toggleButtonOff,
                   pressed ? styles.toggleButtonPressed : null,
                 ]}
               >
                 <Text
                   style={[
                     styles.toggleButtonText,
-                    showLatestOnly
-                      ? styles.toggleButtonTextOn
-                      : styles.toggleButtonTextOff,
+                    showLatestOnly ? styles.toggleButtonTextOn : styles.toggleButtonTextOff,
                   ]}
                 >
-                  {showLatestOnly ? "On" : "Off"}
+                  {showLatestOnly ? 'On' : 'Off'}
                 </Text>
               </Pressable>
             </View>
@@ -1553,14 +1449,10 @@ export default function App() {
                       : null,
                   ]}
                 >
-                  <Text style={[styles.toggleButtonText, styles.toggleButtonTextOff]}>
-                    -
-                  </Text>
+                  <Text style={[styles.toggleButtonText, styles.toggleButtonTextOff]}>-</Text>
                 </Pressable>
                 <View style={styles.refreshValue}>
-                  <Text style={styles.refreshValueText}>
-                    {refreshIntervalSeconds}s
-                  </Text>
+                  <Text style={styles.refreshValueText}>{refreshIntervalSeconds}s</Text>
                 </View>
                 <Pressable
                   onPress={handleIncreaseRefresh}
@@ -1574,42 +1466,32 @@ export default function App() {
                       : null,
                   ]}
                 >
-                  <Text style={[styles.toggleButtonText, styles.toggleButtonTextOff]}>
-                    +
-                  </Text>
+                  <Text style={[styles.toggleButtonText, styles.toggleButtonTextOff]}>+</Text>
                 </Pressable>
               </View>
             </View>
             <Text style={styles.refreshHint}>
-              Range {REFRESH_INTERVAL_MIN_SECONDS}-{REFRESH_INTERVAL_MAX_SECONDS}{" "}
-              seconds.
+              Range {REFRESH_INTERVAL_MIN_SECONDS}-{REFRESH_INTERVAL_MAX_SECONDS} seconds.
             </Text>
           </View>
           {cards.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No cards yet</Text>
-              <Text style={styles.emptyBody}>
-                Choose leagues or teams to enable notifications.
-              </Text>
+              <Text style={styles.emptyBody}>Choose leagues or teams to enable notifications.</Text>
             </View>
           ) : (
             cards.map((card) => {
-              const prefs =
-                notificationPrefs[card.id] ?? DEFAULT_NOTIFICATION_PREFS;
+              const prefs = notificationPrefs[card.id] ?? DEFAULT_NOTIFICATION_PREFS;
               return (
                 <View key={card.id} style={styles.settingsCard}>
                   <Text style={styles.settingsCardTitle}>{card.title}</Text>
                   <View style={styles.settingsToggleRow}>
                     <Text style={styles.settingsToggleLabel}>Game start</Text>
                     <Pressable
-                      onPress={() =>
-                        handleToggleNotification(card.id, "notifyStart")
-                      }
+                      onPress={() => handleToggleNotification(card.id, 'notifyStart')}
                       style={({ pressed }) => [
                         styles.toggleButton,
-                        prefs.notifyStart
-                          ? styles.toggleButtonOn
-                          : styles.toggleButtonOff,
+                        prefs.notifyStart ? styles.toggleButtonOn : styles.toggleButtonOff,
                         pressed ? styles.toggleButtonPressed : null,
                       ]}
                     >
@@ -1621,21 +1503,17 @@ export default function App() {
                             : styles.toggleButtonTextOff,
                         ]}
                       >
-                        {prefs.notifyStart ? "On" : "Off"}
+                        {prefs.notifyStart ? 'On' : 'Off'}
                       </Text>
                     </Pressable>
                   </View>
                   <View style={styles.settingsToggleRow}>
                     <Text style={styles.settingsToggleLabel}>Score change</Text>
                     <Pressable
-                      onPress={() =>
-                        handleToggleNotification(card.id, "notifyScore")
-                      }
+                      onPress={() => handleToggleNotification(card.id, 'notifyScore')}
                       style={({ pressed }) => [
                         styles.toggleButton,
-                        prefs.notifyScore
-                          ? styles.toggleButtonOn
-                          : styles.toggleButtonOff,
+                        prefs.notifyScore ? styles.toggleButtonOn : styles.toggleButtonOff,
                         pressed ? styles.toggleButtonPressed : null,
                       ]}
                     >
@@ -1647,21 +1525,17 @@ export default function App() {
                             : styles.toggleButtonTextOff,
                         ]}
                       >
-                        {prefs.notifyScore ? "On" : "Off"}
+                        {prefs.notifyScore ? 'On' : 'Off'}
                       </Text>
                     </Pressable>
                   </View>
                   <View style={styles.settingsToggleRow}>
                     <Text style={styles.settingsToggleLabel}>Final</Text>
                     <Pressable
-                      onPress={() =>
-                        handleToggleNotification(card.id, "notifyFinal")
-                      }
+                      onPress={() => handleToggleNotification(card.id, 'notifyFinal')}
                       style={({ pressed }) => [
                         styles.toggleButton,
-                        prefs.notifyFinal
-                          ? styles.toggleButtonOn
-                          : styles.toggleButtonOff,
+                        prefs.notifyFinal ? styles.toggleButtonOn : styles.toggleButtonOff,
                         pressed ? styles.toggleButtonPressed : null,
                       ]}
                     >
@@ -1673,7 +1547,7 @@ export default function App() {
                             : styles.toggleButtonTextOff,
                         ]}
                       >
-                        {prefs.notifyFinal ? "On" : "Off"}
+                        {prefs.notifyFinal ? 'On' : 'Off'}
                       </Text>
                     </Pressable>
                   </View>
@@ -1690,7 +1564,7 @@ export default function App() {
     <SafeAreaView style={styles.screen}>
       <AppHeader
         subtitle={homeSubtitle}
-        secondaryActionLabel={isFetching ? "Refreshing" : "Refresh"}
+        secondaryActionLabel={isFetching ? 'Refreshing' : 'Refresh'}
         onSecondaryActionPress={handleRetry}
         secondaryActionDisabled={isFetching}
         actionLabel="Settings"
@@ -1737,16 +1611,14 @@ export default function App() {
             />
           )}
           refreshing={isFetching}
-          onRefresh={() => fetchScores("manual")}
+          onRefresh={() => fetchScores('manual')}
           scrollEnabled={!isDragging}
           ListHeaderComponent={
             showHeaderBanner ? (
               <View style={styles.listHeader}>
                 {showOfflineBanner ? (
                   <View style={styles.offlineBanner}>
-                    <Text style={styles.offlineBannerText}>
-                      {offlineBannerLabel}
-                    </Text>
+                    <Text style={styles.offlineBannerText}>{offlineBannerLabel}</Text>
                     <Pressable
                       onPress={handleRetry}
                       style={({ pressed }) => [
@@ -1794,15 +1666,15 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#0B0F14" },
+  screen: { flex: 1, backgroundColor: '#0B0F14' },
 
   listContent: { padding: 16, paddingTop: 8, gap: 12 },
-  listContentEmpty: { flexGrow: 1, justifyContent: "center" },
+  listContentEmpty: { flexGrow: 1, justifyContent: 'center' },
   listHeader: { gap: 10 },
-  draggableCard: { position: "relative" },
+  draggableCard: { position: 'relative' },
   draggableCardActive: {
     zIndex: 10,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
@@ -1811,174 +1683,174 @@ const styles = StyleSheet.create({
 
   loadingState: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
   },
-  loadingText: { color: "rgba(255,255,255,0.8)", fontWeight: "600" },
-  emptyState: { alignItems: "center", gap: 8, paddingHorizontal: 32 },
-  emptyTitle: { color: "white", fontSize: 18, fontWeight: "800" },
+  loadingText: { color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
+  emptyState: { alignItems: 'center', gap: 8, paddingHorizontal: 32 },
+  emptyTitle: { color: 'white', fontSize: 18, fontWeight: '800' },
   emptyBody: {
-    color: "rgba(255,255,255,0.65)",
+    color: 'rgba(255,255,255,0.65)',
     fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
+    fontWeight: '600',
+    textAlign: 'center',
   },
   errorState: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 10,
     paddingHorizontal: 32,
   },
-  errorTitle: { color: "white", fontSize: 18, fontWeight: "800" },
+  errorTitle: { color: 'white', fontSize: 18, fontWeight: '800' },
   errorBody: {
-    color: "rgba(255,255,255,0.65)",
+    color: 'rgba(255,255,255,0.65)',
     fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
+    fontWeight: '600',
+    textAlign: 'center',
   },
   errorBanner: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 12,
     padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
   },
-  errorBannerText: { color: "rgba(255,255,255,0.8)", fontWeight: "600" },
+  errorBannerText: { color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
   offlineBanner: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 12,
     padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
   },
-  offlineBannerText: { color: "white", fontWeight: "700" },
+  offlineBannerText: { color: 'white', fontWeight: '700' },
   retryButton: {
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: "white",
+    backgroundColor: 'white',
   },
   retryButtonSmall: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: "white",
+    backgroundColor: 'white',
   },
   retryButtonPressed: { opacity: 0.8 },
-  retryButtonText: { color: "#0B0F14", fontWeight: "800" },
+  retryButtonText: { color: '#0B0F14', fontWeight: '800' },
 
   onboardingContainer: { flex: 1, padding: 20, gap: 16 },
-  onboardingTitle: { color: "white", fontSize: 24, fontWeight: "800" },
+  onboardingTitle: { color: 'white', fontSize: 24, fontWeight: '800' },
   onboardingSubtitle: {
-    color: "rgba(255,255,255,0.7)",
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   onboardingError: {
-    backgroundColor: "rgba(255,80,80,0.12)",
+    backgroundColor: 'rgba(255,80,80,0.12)',
     borderRadius: 12,
     padding: 12,
   },
-  onboardingErrorText: { color: "#FFB3B3", fontWeight: "600" },
-  onboardingLoading: { alignItems: "center", gap: 12, paddingVertical: 24 },
+  onboardingErrorText: { color: '#FFB3B3', fontWeight: '600' },
+  onboardingLoading: { alignItems: 'center', gap: 12, paddingVertical: 24 },
   onboardingList: { gap: 12, paddingBottom: 24 },
   choiceRow: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   choiceRowSelected: {
-    backgroundColor: "rgba(255,255,255,0.16)",
+    backgroundColor: 'rgba(255,255,255,0.16)',
   },
-  choiceText: { color: "white", fontSize: 16, fontWeight: "700" },
+  choiceText: { color: 'white', fontSize: 16, fontWeight: '700' },
   choiceTag: {
-    color: "rgba(255,255,255,0.6)",
+    color: 'rgba(255,255,255,0.6)',
     fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    fontWeight: '700',
+    textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  choiceTagActive: { color: "white" },
+  choiceTagActive: { color: 'white' },
   teamGroup: { gap: 8 },
   teamGroupTitle: {
-    color: "rgba(255,255,255,0.8)",
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 13,
-    fontWeight: "700",
-    textTransform: "uppercase",
+    fontWeight: '700',
+    textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginTop: 6,
   },
   teamGroupEmpty: {
-    color: "rgba(255,255,255,0.55)",
+    color: 'rgba(255,255,255,0.55)',
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: '600',
     marginBottom: 4,
   },
-  onboardingFooter: { marginTop: "auto", paddingTop: 8 },
+  onboardingFooter: { marginTop: 'auto', paddingTop: 8 },
   onboardingFooterRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 12,
-    justifyContent: "space-between",
+    justifyContent: 'space-between',
   },
   primaryButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 999,
-    backgroundColor: "white",
-    alignItems: "center",
+    backgroundColor: 'white',
+    alignItems: 'center',
   },
-  primaryButtonDisabled: { backgroundColor: "rgba(255,255,255,0.4)" },
+  primaryButtonDisabled: { backgroundColor: 'rgba(255,255,255,0.4)' },
   primaryButtonPressed: { opacity: 0.85 },
-  primaryButtonText: { color: "#0B0F14", fontWeight: "800" },
+  primaryButtonText: { color: '#0B0F14', fontWeight: '800' },
   secondaryButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    alignItems: "center",
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
   },
   secondaryButtonPressed: { opacity: 0.8 },
-  secondaryButtonText: { color: "white", fontWeight: "800" },
+  secondaryButtonText: { color: 'white', fontWeight: '800' },
 
   settingsContent: { padding: 16, gap: 16, paddingBottom: 32 },
   settingsCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 14,
     padding: 16,
     gap: 12,
   },
-  settingsCardTitle: { color: "white", fontSize: 18, fontWeight: "800" },
+  settingsCardTitle: { color: 'white', fontSize: 18, fontWeight: '800' },
   settingsSummaryText: {
-    color: "rgba(255,255,255,0.7)",
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   settingsActionButton: {
-    alignSelf: "flex-start",
+    alignSelf: 'flex-start',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: "white",
+    backgroundColor: 'white',
   },
   settingsActionButtonPressed: { opacity: 0.85 },
-  settingsActionButtonText: { color: "#0B0F14", fontWeight: "800" },
+  settingsActionButtonText: { color: '#0B0F14', fontWeight: '800' },
   settingsToggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
   },
-  settingsToggleLabel: { color: "rgba(255,255,255,0.8)", fontWeight: "600" },
+  settingsToggleLabel: { color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
   toggleButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -1986,25 +1858,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   toggleButtonOn: {
-    backgroundColor: "white",
-    borderColor: "white",
+    backgroundColor: 'white',
+    borderColor: 'white',
   },
   toggleButtonOff: {
-    backgroundColor: "transparent",
-    borderColor: "rgba(255,255,255,0.3)",
+    backgroundColor: 'transparent',
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   toggleButtonPressed: { opacity: 0.8 },
   toggleButtonDisabled: { opacity: 0.4 },
-  toggleButtonText: { fontWeight: "800", fontSize: 12, letterSpacing: 0.4 },
-  toggleButtonTextOn: { color: "#0B0F14" },
-  toggleButtonTextOff: { color: "rgba(255,255,255,0.75)" },
-  refreshControl: { flexDirection: "row", alignItems: "center", gap: 10 },
+  toggleButtonText: { fontWeight: '800', fontSize: 12, letterSpacing: 0.4 },
+  toggleButtonTextOn: { color: '#0B0F14' },
+  toggleButtonTextOff: { color: 'rgba(255,255,255,0.75)' },
+  refreshControl: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   refreshValue: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
-  refreshValueText: { color: "white", fontWeight: "800" },
-  refreshHint: { color: "rgba(255,255,255,0.6)", fontWeight: "600" },
+  refreshValueText: { color: 'white', fontWeight: '800' },
+  refreshHint: { color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
 });

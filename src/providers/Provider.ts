@@ -6,7 +6,7 @@ export type ProviderScoresRequest = {
   leagueIds?: string[];
   teamIds?: string[];
   date?: string;
-  window?: "day" | "week";
+  window?: 'day' | 'week';
 };
 
 export interface Provider<League = unknown, Team = unknown, ScoreCard = unknown> {
@@ -14,8 +14,5 @@ export interface Provider<League = unknown, Team = unknown, ScoreCard = unknown>
   name: string;
   getLeagues(options?: ProviderFetchOptions): Promise<League[]>;
   getTeams(leagueId: string, options?: ProviderFetchOptions): Promise<Team[]>;
-  getScores(
-    request: ProviderScoresRequest,
-    options?: ProviderFetchOptions
-  ): Promise<ScoreCard[]>;
+  getScores(request: ProviderScoresRequest, options?: ProviderFetchOptions): Promise<ScoreCard[]>;
 }

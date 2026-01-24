@@ -197,16 +197,17 @@ Note: No "Latest only" display toggle in the client card model for v0.
 - [x] Set and document `EXPO_PUBLIC_ONLYSCORES_API_BASE_URL` for runtime.
 - [x] Run end-to-end Expo push notification test with backend events.
 - [x] Add a clear startup warning when API base URL is missing.
-- [x] Reconcile provider history now that the mobile app uses `BackendProvider` only.
 - [x] Implement selection-scoped cache snapshots (selectionId + fetchedAt) for hydration.
 - [x] Document "Edit leagues & teams" settings flow in PRD key flows.
 - [x] Add analytics tracking for app open, refresh, and notification open events (no PII).
 - [x] Document edit leagues and teams flow in PRD key flows.
-- [x] Decide on `/v1/scores/last-updated` usage: wire into UI or remove from contract.
-- [x] Pass explicit date for non-NFL score requests to guarantee "today" behavior.
 - [x] Persist per-card collapse state or remove it from the client data model.
 - [x] Add warm-start timing instrumentation to validate the 1.5s metric.
-- [x] Align notification strategy: remove client-side local scheduling or document hybrid model.
-- [x] Document or remove the "Latest only" display toggle in PRD scope and data model.
 - [x] Document the "Edit leagues & teams" settings flow in PRD key flows.
+- [ ] Reconcile provider history now that the mobile app uses `BackendProvider` only.
+- [ ] Decide on `/v1/scores/last-updated` usage: wire into UI or remove from contract.
+- [ ] Pass explicit date for non-NFL score requests to guarantee "today" behavior.
+- [ ] Align notification strategy: remove client-side local scheduling or document hybrid model.
+- [ ] Document or remove the "Latest only" display toggle in PRD scope and data model.
 - [ ] Align platform scope with Expo config (Android-first vs iOS enabled in `app.json`).
+- [ ] Add analytics events endpoint to PRD API contract (include payload metadata).

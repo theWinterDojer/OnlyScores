@@ -38,6 +38,7 @@ noise. Most sports apps prioritize content and engagement over speed.
 - Auto refresh interval defaults to 60 seconds (configurable 60-120 seconds).
 - Reorder cards via drag and drop (persisted locally).
 - Settings: toggle notifications per card (start, score change, final).
+- No "Latest only" display toggle; cards show all games in the selected window.
 - Cached last fetch shown if offline.
 
 ## Non-Goals (v0)
@@ -101,6 +102,7 @@ Client:
 - card (selectionId, collapsed, notifyStart, notifyScore, notifyFinal)
 - game (id, leagueId, teams, scores, status, startTime, lastUpdated)
 - cacheSnapshot (selectionId, fetchedAt, payload)
+Note: No "Latest only" display toggle in the client card model for v0.
 
 ## Notifications
 - Per-card toggles for game start, score change, and final.
@@ -201,6 +203,6 @@ Client:
 - [x] Persist per-card collapse state or remove it from the client data model.
 - [x] Add warm-start timing instrumentation to validate the 1.5s metric.
 - [x] Align notification strategy: remove client-side local scheduling or document hybrid model.
-- [ ] Document or remove the "Latest only" display toggle in PRD scope and data model.
+- [x] Document or remove the "Latest only" display toggle in PRD scope and data model.
 - [ ] Document the "Edit leagues & teams" settings flow in PRD key flows.
 - [ ] Align platform scope with Expo config (Android-first vs iOS enabled in `app.json`).

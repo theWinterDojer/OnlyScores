@@ -59,6 +59,7 @@ noise. Most sports apps prioritize content and engagement over speed.
 - Home: view score cards, expand or collapse cards, reorder cards.
 - Refresh: pull to refresh or tap refresh control.
 - Settings: toggle notifications for each card.
+- Settings: edit leagues and teams, save changes, return to home.
 
 ## UX Principles
 - Scores first: content visible immediately on launch.
@@ -198,6 +199,7 @@ Note: No "Latest only" display toggle in the client card model for v0.
 - [x] Reconcile provider history now that the mobile app uses `BackendProvider` only.
 - [x] Implement selection-scoped cache snapshots (selectionId + fetchedAt) for hydration.
 - [x] Add analytics tracking for app open, refresh, and notification open events (no PII).
+- [x] Document edit leagues and teams flow in PRD key flows.
 - [x] Decide on `/v1/scores/last-updated` usage: wire into UI or remove from contract.
 - [x] Pass explicit date for non-NFL score requests to guarantee "today" behavior.
 - [x] Persist per-card collapse state or remove it from the client data model.

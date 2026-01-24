@@ -42,7 +42,7 @@ import type {
 } from "./src/types/provider";
 import type { Game, ScoreCard } from "./src/types/score";
 
-const SCORE_CACHE_KEY = "scores:latest:ui";
+const SCORE_SNAPSHOT_CACHE_KEY = "scores:snapshots";
 const CARD_ORDER_CACHE_KEY = "cards:order";
 const SELECTION_CACHE_KEY = "selection:preferences";
 const NOTIFICATION_PREFS_CACHE_KEY = "cards:notifications";
@@ -59,6 +59,42 @@ const MISSING_API_BASE_WARNING =
 type SelectionPreferences = {
   leagueIds: string[];
   teamIds: string[];
+};
+
+type ScoresCacheSnapshot = {
+  selectionId: string;
+  fetchedAt: string;
+  cards: ScoreCard[];
+};
+
+type ScoresCacheStore = Record<string, ScoresCacheSnapshot>;
+
+const normalizeSelectionIds = (ids: string[]) =>
+  ids
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0)
+    .sort();
+
+const buildSelectionId = (leagueIds: string[], teamIds: string[]) => {
+  if (leagueIds.length === 0 && teamIds.length === 0) return null;
+  const normalizedLeagues = normalizeSelectionIds(leagueIds);
+  const normalizedTeams = normalizeSelectionIds(teamIds);
+  return `leagues:${normalizedLeagues.join(",")}|teams:${normalizedTeams.join(",")}`;
+};
+
+const readScoresSnapshot = async (selectionId: string) => {
+  const cached = await readCache<ScoresCacheStore>(SCORE_SNAPSHOT_CACHE_KEY);
+  if (!cached) return null;
+  return cached[selectionId] ?? null;
+};
+
+const writeScoresSnapshot = async (
+  selectionId: string,
+  snapshot: ScoresCacheSnapshot
+) => {
+  const cached = await readCache<ScoresCacheStore>(SCORE_SNAPSHOT_CACHE_KEY);
+  const next: ScoresCacheStore = { ...(cached ?? {}), [selectionId]: snapshot };
+  await writeCache(SCORE_SNAPSHOT_CACHE_KEY, next);
 };
 
 const formatLocalDateKey = (value: Date) => {
@@ -387,6 +423,7 @@ export default function App() {
   const [selectedLeagueIds, setSelectedLeagueIds] = useState<string[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [leagues, setLeagues] = useState<ProviderLeague[]>([]);
+  const [cachedFetchedAt, setCachedFetchedAt] = useState<string | null>(null);
   const [teamsByLeagueId, setTeamsByLeagueId] = useState<
     Record<string, ProviderTeam[]>
   >({});
@@ -457,7 +494,10 @@ export default function App() {
       }),
     [cards, notificationPrefs]
   );
-  const latestUpdated = useMemo(() => getLatestCardUpdated(cards), [cards]);
+  const latestUpdated = useMemo(
+    () => getLatestCardUpdated(cards) ?? cachedFetchedAt ?? undefined,
+    [cards, cachedFetchedAt]
+  );
   const homeSubtitle = useMemo(() => {
     if (isFetching) return "Refreshing...";
     if (latestUpdated) return formatUpdatedLabel(latestUpdated);
@@ -478,6 +518,7 @@ export default function App() {
   useEffect(() => {
     notificationBaselineRef.current = null;
     hasNotificationBaselineRef.current = false;
+    setCachedFetchedAt(null);
   }, [selectedLeagueIds, selectedTeamIds]);
 
   useEffect(() => {
@@ -579,31 +620,6 @@ export default function App() {
       isMountedRef.current = false;
     };
   }, []);
-
-  useEffect(() => {
-    let isActive = true;
-    const hydrateScoresCache = async () => {
-      try {
-        const cachedOrder = await readCache<string[]>(CARD_ORDER_CACHE_KEY);
-        if (cachedOrder && cachedOrder.length > 0) {
-          cardOrderRef.current = cachedOrder;
-        }
-        const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
-        if (cached && isActive && isMountedRef.current) {
-          setCards(applyCardOrder(cached, cardOrderRef.current));
-          ensureNotificationPrefs(cached);
-        }
-      } catch {
-        // Ignore cache hydration failures.
-      }
-    };
-
-    hydrateScoresCache();
-
-    return () => {
-      isActive = false;
-    };
-  }, [ensureNotificationPrefs]);
 
   useEffect(() => {
     void configureNotifications();
@@ -926,6 +942,7 @@ export default function App() {
     isFetchingRef.current = true;
     setIsFetching(true);
     setErrorMessage(null);
+    const selectionId = buildSelectionId(selectedLeagueIds, selectedTeamIds);
 
     try {
       const provider = getProvider();
@@ -977,6 +994,7 @@ export default function App() {
       ).flat();
       const normalized = normalizeCards(filteredCards, buildTeamLookup(teams));
       const ordered = applyCardOrder(normalized, cardOrderRef.current);
+      const fetchedAt = new Date().toISOString();
       const previousCards = notificationBaselineRef.current;
       if (
         previousCards &&
@@ -998,10 +1016,17 @@ export default function App() {
       if (isMountedRef.current) {
         setCards(ordered);
         setIsOffline(false);
+        setCachedFetchedAt(fetchedAt);
         ensureNotificationPrefs(ordered);
       }
       try {
-        await writeCache(SCORE_CACHE_KEY, ordered);
+        if (selectionId) {
+          await writeScoresSnapshot(selectionId, {
+            selectionId,
+            fetchedAt,
+            cards: ordered,
+          });
+        }
       } catch {
         // Cache failures should not block score updates.
       }
@@ -1015,10 +1040,13 @@ export default function App() {
         if (cachedOrder && cachedOrder.length > 0) {
           cardOrderRef.current = cachedOrder;
         }
-        const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
-        if (cached && isMountedRef.current) {
-          setCards(applyCardOrder(cached, cardOrderRef.current));
-          ensureNotificationPrefs(cached);
+        if (selectionId) {
+          const snapshot = await readScoresSnapshot(selectionId);
+          if (snapshot && isMountedRef.current) {
+            setCards(applyCardOrder(snapshot.cards, cardOrderRef.current));
+            setCachedFetchedAt(snapshot.fetchedAt);
+            ensureNotificationPrefs(snapshot.cards);
+          }
         }
       } catch {
         // Ignore cache fallback failures.
@@ -1076,10 +1104,17 @@ export default function App() {
         if (cachedOrder && cachedOrder.length > 0) {
           cardOrderRef.current = cachedOrder;
         }
-        const cached = await readCache<ScoreCard[]>(SCORE_CACHE_KEY);
-        if (cached && isMountedRef.current) {
-          setCards(applyCardOrder(cached, cardOrderRef.current));
-          ensureNotificationPrefs(cached);
+        const selectionId = buildSelectionId(
+          selectedLeagueIds,
+          selectedTeamIds
+        );
+        if (selectionId) {
+          const snapshot = await readScoresSnapshot(selectionId);
+          if (snapshot && isMountedRef.current) {
+            setCards(applyCardOrder(snapshot.cards, cardOrderRef.current));
+            setCachedFetchedAt(snapshot.fetchedAt);
+            ensureNotificationPrefs(snapshot.cards);
+          }
         }
       } catch {
         // Ignore cache hydration failures.
@@ -1089,7 +1124,14 @@ export default function App() {
     };
 
     hydrateAndFetch();
-  }, [fetchScores, selectionHydrated, isOnboarding]);
+  }, [
+    fetchScores,
+    selectionHydrated,
+    isOnboarding,
+    selectedLeagueIds,
+    selectedTeamIds,
+    ensureNotificationPrefs,
+  ]);
 
   const startAutoRefresh = useCallback(() => {
     if (autoRefreshRef.current) return;

@@ -195,7 +195,7 @@ Client:
 - [x] Run end-to-end Expo push notification test with backend events.
 - [x] Add a clear startup warning when API base URL is missing.
 - [x] Reconcile provider history now that the mobile app uses `BackendProvider` only.
-- [ ] Implement selection-scoped cache snapshots (selectionId + fetchedAt) for hydration.
+- [x] Implement selection-scoped cache snapshots (selectionId + fetchedAt) for hydration.
 - [ ] Add analytics tracking for app open, refresh, and notification open events (no PII).
 - [ ] Decide on `/v1/scores/last-updated` usage: wire into UI or remove from contract.
 - [ ] Pass explicit date for non-NFL score requests to guarantee "today" behavior.

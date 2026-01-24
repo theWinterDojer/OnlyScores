@@ -37,15 +37,6 @@ const fetchJson = async <T>(
   return response.json() as Promise<T>;
 };
 
-const resolveLeagues = (payload: ProviderLeague[] | ProviderLeaguesResponse) =>
-  Array.isArray(payload) ? payload : payload.leagues;
-
-const resolveTeams = (payload: ProviderTeam[] | ProviderTeamsResponse) =>
-  Array.isArray(payload) ? payload : payload.teams;
-
-const resolveCards = (payload: ProviderScoreCard[] | ProviderScoresResponse) =>
-  Array.isArray(payload) ? payload : payload.cards;
-
 const { endpoints } = backendContract;
 
 const backendProvider: Provider<
@@ -56,19 +47,19 @@ const backendProvider: Provider<
   id: "backend",
   name: "OnlyScores API",
   async getLeagues(options?: ProviderFetchOptions) {
-    const payload = await fetchJson<ProviderLeague[] | ProviderLeaguesResponse>(
+    const payload = await fetchJson<ProviderLeaguesResponse>(
       endpoints.leagues,
       options
     );
-    return resolveLeagues(payload);
+    return payload.leagues;
   },
   async getTeams(leagueId: string, options?: ProviderFetchOptions) {
     const query = buildQuery({ leagueId });
-    const payload = await fetchJson<ProviderTeam[] | ProviderTeamsResponse>(
+    const payload = await fetchJson<ProviderTeamsResponse>(
       `${endpoints.teams}${query}`,
       options
     );
-    return resolveTeams(payload);
+    return payload.teams;
   },
   async getScores(request: ProviderScoresRequest, options?: ProviderFetchOptions) {
     const leagueIds = request.leagueIds?.join(",");
@@ -79,11 +70,11 @@ const backendProvider: Provider<
       date: request.date,
       window: request.window,
     });
-    const payload = await fetchJson<ProviderScoreCard[] | ProviderScoresResponse>(
+    const payload = await fetchJson<ProviderScoresResponse>(
       `${endpoints.scores}${query}`,
       options
     );
-    return resolveCards(payload);
+    return payload.cards;
   },
 };
 

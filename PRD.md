@@ -85,7 +85,6 @@ noise. Most sports apps prioritize content and engagement over speed.
 - GET /v1/teams?leagueId=...
 - GET /v1/scores?leagueIds=...
 - GET /v1/scores?teamIds=...
-- GET /v1/scores/last-updated
 - POST /v1/device/subscribe
 
 ## Data Model (v0)
@@ -197,7 +196,7 @@ Client:
 - [x] Reconcile provider history now that the mobile app uses `BackendProvider` only.
 - [x] Implement selection-scoped cache snapshots (selectionId + fetchedAt) for hydration.
 - [x] Add analytics tracking for app open, refresh, and notification open events (no PII).
-- [ ] Decide on `/v1/scores/last-updated` usage: wire into UI or remove from contract.
+- [x] Decide on `/v1/scores/last-updated` usage: wire into UI or remove from contract.
 - [ ] Pass explicit date for non-NFL score requests to guarantee "today" behavior.
 - [ ] Persist per-card collapse state or remove it from the client data model.
 - [ ] Add warm-start timing instrumentation to validate the 1.5s metric.

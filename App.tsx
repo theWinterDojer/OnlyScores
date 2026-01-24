@@ -468,6 +468,10 @@ export default function App() {
   const notificationBaselineRef = useRef<ScoreCard[] | null>(null);
   const hasNotificationBaselineRef = useRef(false);
   const lastNotificationIdRef = useRef<string | null>(null);
+  const warmStartTimingRef = useRef({
+    startMs: Date.now(),
+    tracked: false,
+  });
   const dragTranslateY = useRef(new Animated.Value(0)).current;
   const dragStartYRef = useRef(0);
   const draggingIdRef = useRef<string | null>(null);
@@ -538,6 +542,16 @@ export default function App() {
 
   const trackRefresh = useCallback((source: RefreshSource) => {
     void trackAnalyticsEvent("refresh", { source });
+  }, []);
+
+  const trackWarmStartTiming = useCallback((source: "cache" | "network") => {
+    if (warmStartTimingRef.current.tracked) return;
+    warmStartTimingRef.current.tracked = true;
+    const durationMs = Date.now() - warmStartTimingRef.current.startMs;
+    void trackAnalyticsEvent("warm_start_timing", {
+      source,
+      durationMs: `${durationMs}`,
+    });
   }, []);
 
   const trackNotificationOpen = useCallback(
@@ -1125,6 +1139,9 @@ export default function App() {
         setIsOffline(false);
         setCachedFetchedAt(fetchedAt);
         ensureNotificationPrefs(ordered);
+        if (source === "initial" && ordered.length > 0) {
+          trackWarmStartTiming("network");
+        }
       }
       try {
         if (selectionId) {
@@ -1175,6 +1192,7 @@ export default function App() {
     notificationPermissionGranted,
     notificationPrefs,
     trackRefresh,
+    trackWarmStartTiming,
   ]);
 
   useEffect(() => {
@@ -1222,6 +1240,9 @@ export default function App() {
             setCards(applyCardOrder(snapshot.cards, cardOrderRef.current));
             setCachedFetchedAt(snapshot.fetchedAt);
             ensureNotificationPrefs(snapshot.cards);
+            if (snapshot.cards.length > 0) {
+              trackWarmStartTiming("cache");
+            }
           }
         }
       } catch {
@@ -1239,6 +1260,7 @@ export default function App() {
     selectedLeagueIds,
     selectedTeamIds,
     ensureNotificationPrefs,
+    trackWarmStartTiming,
   ]);
 
   const startAutoRefresh = useCallback(() => {

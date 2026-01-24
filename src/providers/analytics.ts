@@ -2,7 +2,11 @@ import { backendContract } from "./backendContract";
 
 const API_BASE = process.env.EXPO_PUBLIC_ONLYSCORES_API_BASE_URL;
 
-export type AnalyticsEventName = "app_open" | "refresh" | "notification_open";
+export type AnalyticsEventName =
+  | "app_open"
+  | "refresh"
+  | "notification_open"
+  | "warm_start_timing";
 
 export type AnalyticsMetadata = Record<string, string>;
 

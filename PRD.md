@@ -199,7 +199,7 @@ Client:
 - [x] Decide on `/v1/scores/last-updated` usage: wire into UI or remove from contract.
 - [x] Pass explicit date for non-NFL score requests to guarantee "today" behavior.
 - [x] Persist per-card collapse state or remove it from the client data model.
-- [ ] Add warm-start timing instrumentation to validate the 1.5s metric.
+- [x] Add warm-start timing instrumentation to validate the 1.5s metric.
 - [ ] Align notification strategy: remove client-side local scheduling or document hybrid model.
 - [ ] Document or remove the "Latest only" display toggle in PRD scope and data model.
 - [ ] Document the "Edit leagues & teams" settings flow in PRD key flows.

@@ -19,7 +19,9 @@ const ensureApiBase = () => {
 };
 
 const buildQuery = (params: Record<string, string | undefined>) => {
-  const entries = Object.entries(params).filter(([, value]) => value);
+  const entries = Object.entries(params).filter(
+    (entry): entry is [string, string] => Boolean(entry[1])
+  );
   if (entries.length === 0) return "";
   const searchParams = new URLSearchParams(entries);
   return `?${searchParams.toString()}`;

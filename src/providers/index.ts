@@ -1,7 +1,15 @@
 import { Provider } from "./Provider";
 import backendProvider from "./BackendProvider";
+import type {
+  ProviderLeague,
+  ProviderScoreCard,
+  ProviderTeam,
+} from "../types/provider";
 
-export type ProviderRegistry = Record<string, Provider>;
+export type ProviderRegistry = Record<
+  string,
+  Provider<ProviderLeague, ProviderTeam, ProviderScoreCard>
+>;
 
 export const providers: ProviderRegistry = {
   backend: backendProvider,

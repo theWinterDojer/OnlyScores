@@ -28,6 +28,8 @@ export const configureNotifications = async () => {
       shouldShowAlert: true,
       shouldPlaySound: false,
       shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
     }),
   });
 

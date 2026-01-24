@@ -43,7 +43,7 @@ import type {
   ProviderScoreCard,
   ProviderTeam,
 } from "./src/types/provider";
-import type { ScoreCard } from "./src/types/score";
+import type { Game, ScoreCard } from "./src/types/score";
 
 const SCORE_SNAPSHOT_CACHE_KEY = "scores:snapshots";
 const CARD_ORDER_CACHE_KEY = "cards:order";

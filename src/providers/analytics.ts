@@ -1,6 +1,8 @@
 import { backendContract } from "./backendContract";
 
-const API_BASE = process.env.EXPO_PUBLIC_ONLYSCORES_API_BASE_URL;
+const normalizeApiBase = (value?: string) =>
+  value ? value.replace(/\/+$/, "") : "";
+const API_BASE = normalizeApiBase(process.env.EXPO_PUBLIC_ONLYSCORES_API_BASE_URL);
 
 export type AnalyticsEventName =
   | "app_open"

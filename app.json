@@ -3,7 +3,7 @@
     "name": "OnlyScores",
     "slug": "OnlyScores",
     "version": "1.0.0",
-    "platforms": ["android", "ios"],
+    "platforms": ["web, android", "ios"],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

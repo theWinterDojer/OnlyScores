@@ -200,7 +200,7 @@ Client:
 - [x] Pass explicit date for non-NFL score requests to guarantee "today" behavior.
 - [x] Persist per-card collapse state or remove it from the client data model.
 - [x] Add warm-start timing instrumentation to validate the 1.5s metric.
-- [ ] Align notification strategy: remove client-side local scheduling or document hybrid model.
+- [x] Align notification strategy: remove client-side local scheduling or document hybrid model.
 - [ ] Document or remove the "Latest only" display toggle in PRD scope and data model.
 - [ ] Document the "Edit leagues & teams" settings flow in PRD key flows.
 - [ ] Align platform scope with Expo config (Android-first vs iOS enabled in `app.json`).

@@ -59,9 +59,8 @@ noise. Most sports apps prioritize content and engagement over speed.
 - Home: view score cards, expand or collapse cards, reorder cards.
 - Refresh: pull to refresh or tap refresh control.
 - Settings: toggle notifications for each card.
-- Settings: edit leagues and teams, save changes, return to home.
-- Edit leagues & teams: open settings, choose edit, adjust leagues and teams,
-  confirm selection, persist changes, refresh home cards.
+- Edit leagues & teams: Settings > Edit leagues & teams, adjust selections,
+  confirm save, persist changes, refresh home cards.
 
 ## UX Principles
 - Scores first: content visible immediately on launch.
@@ -209,5 +208,5 @@ Note: No "Latest only" display toggle in the client card model for v0.
 - [x] Add warm-start timing instrumentation to validate the 1.5s metric.
 - [x] Align notification strategy: remove client-side local scheduling or document hybrid model.
 - [x] Document or remove the "Latest only" display toggle in PRD scope and data model.
-- [ ] Document the "Edit leagues & teams" settings flow in PRD key flows.
+- [x] Document the "Edit leagues & teams" settings flow in PRD key flows.
 - [ ] Align platform scope with Expo config (Android-first vs iOS enabled in `app.json`).

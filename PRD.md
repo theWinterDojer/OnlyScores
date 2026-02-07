@@ -44,7 +44,7 @@ noise. Most sports apps prioritize content and engagement over speed.
 - Auto refresh interval defaults to 60 seconds (configurable 60-120 seconds).
 - Reorder cards via drag and drop (persisted locally).
 - Settings: toggle notifications per card (start, score change, final).
-- No "Latest only" display toggle; cards show all games in the selected window.
+- Settings: "Latest only" display toggle (persisted locally).
 - Cached last fetch shown if offline.
 
 ## Non-Goals (v0)
@@ -58,8 +58,7 @@ noise. Most sports apps prioritize content and engagement over speed.
 ## Platforms and Stack
 
 - Expo (React Native) app with TypeScript.
-- Android first.
-- iOS later with feature parity.
+- Android first with iOS and web enabled in Expo config (feature parity target).
 - Push notifications via Expo Push (FCM/APNs).
 
 ## Key User Flows
@@ -81,9 +80,8 @@ noise. Most sports apps prioritize content and engagement over speed.
 
 ## Data Provider Strategy
 
-- Start with TheSportsDB (free).
-- Provider interface must be swappable for premium or alternate providers.
 - Mobile clients consume normalized backend data only.
+- Backend adapters remain swappable for premium or alternate providers.
 - If provider lacks realtime, backend polls every 60-120 seconds.
 
 ## Backend Requirements (v0)
@@ -102,6 +100,7 @@ noise. Most sports apps prioritize content and engagement over speed.
 - GET /v1/scores?leagueIds=...
 - GET /v1/scores?teamIds=...
 - POST /v1/device/subscribe
+- POST /v1/analytics/events
 
 ## Data Model (v0)
 
@@ -120,7 +119,7 @@ Client:
 - card (selectionId, collapsed, notifyStart, notifyScore, notifyFinal)
 - game (id, leagueId, teams, scores, status, startTime, lastUpdated)
 - cacheSnapshot (selectionId, fetchedAt, payload)
-  Note: No "Latest only" display toggle in the client card model for v0.
+  Note: "Latest only" is a client display preference (persisted locally).
 
 ## Notifications
 
@@ -169,6 +168,7 @@ Client:
 - Card reorder uses drag-and-drop with a drag handle.
 - Refresh interval setting persists between 60-120 seconds.
 - Team logos render with fallback badges when missing.
+- TheSportsDB v1 league events can return team IDs that do not resolve to team names in the client, showing raw IDs in score rows.
 
 ## Tasks
 
@@ -228,10 +228,18 @@ Client:
 - [x] Persist per-card collapse state or remove it from the client data model.
 - [x] Add warm-start timing instrumentation to validate the 1.5s metric.
 - [x] Document the "Edit leagues & teams" settings flow in PRD key flows.
+- [x] Align notification strategy: remove client-side local scheduling or document hybrid model.
+- [x] Document the "Latest only" display toggle in PRD scope and data model.
+- [x] Align platform scope with Expo config (Android-first vs iOS enabled in `app.json`).
+- [x] Add analytics events endpoint to PRD API contract (include payload metadata).
+- [x] Add `backend/` TypeScript service scaffold (Express + dev/start scripts).
+- [x] Add backend env config for TheSportsDB v1 key (`123`) and `PORT=4000`.
+- [x] Implement TheSportsDB v1 adapter with light in-memory caching.
+- [x] Implement backend `GET /v1/leagues` and `GET /v1/teams` endpoints.
+- [x] Implement backend `GET /v1/scores` endpoint (day/week window support).
+- [x] Stub `POST /v1/device/subscribe` and `POST /v1/analytics/events` with 204 responses.
+- [x] Document local backend run steps and update app `.env` guidance to point at `http://localhost:4000`.
 - [ ] Reconcile provider history now that the mobile app uses `BackendProvider` only.
 - [ ] Decide on `/v1/scores/last-updated` usage: wire into UI or remove from contract.
 - [ ] Pass explicit date for non-NFL score requests to guarantee "today" behavior.
-- [ ] Align notification strategy: remove client-side local scheduling or document hybrid model.
-- [ ] Document or remove the "Latest only" display toggle in PRD scope and data model.
-- [ ] Align platform scope with Expo config (Android-first vs iOS enabled in `app.json`).
-- [ ] Add analytics events endpoint to PRD API contract (include payload metadata).
+- [ ] Resolve team ID/name mismatches in TheSportsDB v1 events so score rows never show raw IDs.
